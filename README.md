@@ -11,3 +11,8 @@ Base actual: README, plantilla de PR, formulario de issues y revisor IA en GitHu
 La IA devuelve hallazgos sobre PR y sugerencias de pruebas; no planifica, no aprueba ni integra. CI de esta base verifica automatización. Las pruebas Maven y Docker se agregan en sus issues cuando exista la aplicación.
 
 No incorporar credenciales, claves JWT privadas ni archivos .env. Java25 para aplicaciones; config-repo es únicamente Git de propiedades no sensibles dev/prod.
+
+## Identidades de dominio
+
+El UUID del usuario no equivale automáticamente al UUID del cliente o repartidor. Las asociaciones confiables se guardan y se gestionan por ADMIN; el registro público no permite elegir roles privilegiados ni IDs ajenos. Los consumidores verifican JWT y pertenencia localmente. Ver el contrato central antes de implementar.
+
