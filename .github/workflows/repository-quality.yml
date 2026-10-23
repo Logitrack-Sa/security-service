@@ -1,0 +1,69 @@
+name: Calidad del repositorio
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  repository:
+    name: Markdown y estructura
+    runs-on: ubuntu-latest
+    outputs:
+      maven: ${{ steps.structure.outputs.maven }}
+      docker: ${{ steps.structure.outputs.docker }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22'
+      - id: structure
+        run: node .github/scripts/check_repository.mjs
+
+  java:
+    name: Maven y MySQL aislados
+    needs: repository
+    if: needs.repository.outputs.maven == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: service_test
+          MYSQL_USER: service_test
+          MYSQL_PASSWORD: integration-only
+          MYSQL_ROOT_PASSWORD: integration-root-only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Verificar con fixtures del propio servicio
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/service_test?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+          SPRING_DATASOURCE_USERNAME: service_test
+          SPRING_DATASOURCE_PASSWORD: integration-only
+        run: mvn --batch-mode --no-transfer-progress -DfailIfNoTests=true verify
+  image:
+    name: Construir imagen sin publicar
+    needs: [repository, java]
+    if: needs.repository.outputs.docker == 'true' && needs.java.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: docker build --tag local/service:ci .
