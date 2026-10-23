@@ -84,6 +84,7 @@ export async function syncPull(github, number) {
 export async function runBot({ github, event, eventName, ask = askModel }) {
   const number = event.issue?.number || event.pull_request?.number || Number(event.inputs?.number);
   if (!Number.isSafeInteger(number) || number < 1) throw new Error('Número de issue/PR inválido.');
+  console.log(`Evento de revisión: ${eventName}; acción: ${event.action || 'manual'}; número: ${number}`);
   let review = false;
   if (eventName === 'issue_comment') {
     if (event.comment?.user?.type === 'Bot' || !TRUSTED.includes(event.comment?.author_association)) return;
@@ -105,7 +106,12 @@ export async function runBot({ github, event, eventName, ask = askModel }) {
     return;
   } else if (eventName === 'pull_request_target') {
     const pull = await github.get(`/pulls/${number}`);
-    if (!TRUSTED.includes(pull.author_association)) return;
+    console.log(`Asociación visible del autor: ${pull.author_association}`);
+    if (!TRUSTED.includes(pull.author_association) && !TRUSTED.includes(event.pull_request?.author_association)) {
+      let permission;
+      try { permission = (await github.get(`/collaborators/${encodeURIComponent(pull.user?.login || '')}/permission`)).permission; } catch {}
+      if (!['admin','maintain','write'].includes(permission)) { console.log('Revisión omitida: autor sin permiso de escritura verificado.'); return; }
+    }
     await syncPull(github, number);
     review = ['opened','reopened','synchronize','ready_for_review','edited'].includes(event.action);
   } else if (eventName === 'workflow_dispatch') {
@@ -117,7 +123,8 @@ export async function runBot({ github, event, eventName, ask = askModel }) {
   try {
     await syncPull(github, number);
     return await reviewPull(github, number, ask);
-  } catch {
+  } catch (error) {
+    console.error(error.message); // Mensajes sanitizados por GitHub/model, nunca stderr/prompt/token.
     await github.replaceLabels(number, 'ai:', ['ai:unavailable']);
     await github.comment(number, '<!-- ai-configuration -->',
       '## Revisión IA no disponible\n\nNo se completó el análisis; no equivale a una aprobación. Revisar acceso Copilot/políticas de la organización o secreto COPILOT_GITHUB_TOKEN. ' +
@@ -137,7 +144,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   } finally {
     if (github && github.changedStatuses.size) {
       if (!process.env.PROJECT_TOKEN) {
-        console.log('::warning::Etiquetas actualizadas; falta PROJECT_TOKEN para sincronizar las tarjetas del Project 2.');
+        console.log('Etiquetas actualizadas. El flujo normal del tablero usa automatizaciones nativas; /review status solo mueve tarjetas si se configura PROJECT_TOKEN.');
       } else {
         try {
           const projects = new ProjectSync(new GitHub({ token: process.env.PROJECT_TOKEN }), process.env.PROJECT_NUMBER || '2');
