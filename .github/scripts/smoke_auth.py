@@ -13,7 +13,7 @@ def call(path, method="GET", data=None, token=None, expected=200):
     try: response = urlopen(request, timeout=3)
     except HTTPError as failure: response = failure
     with response:
-        assert response.status == expected, f"{method} {path}: estado HTTP inesperado"
+        assert response.status == expected, f"{method} {path}: HTTP {response.status}, esperado {expected}"
         return json.load(response)
 
 for attempt in range(60):
@@ -35,5 +35,5 @@ client = call("/api/v1/auth/register", "POST", {"email":"fixture-client@example.
 assert client["roles"] == ["CLIENTE"] and "passwordHash" not in client
 client_token = call("/api/v1/auth/login", "POST", {"username":"fixture-client","password":"Client-fixture-password"})["accessToken"]
 call("/api/v1/users/"+client["id"], token=client_token, expected=403)
-call("/api/v1/auth/register", "POST", {"email":"blocked@example.test","password":"Client-fixture-password","roles":["ADMIN"]}, expected=403)
+assert call("/api/v1/auth/register", "POST", {"email":"blocked@example.test","password":"Client-fixture-password","roles":["ADMIN"]}, expected=400)["code"] == "PRIVILEGE_ESCALATION"
 print("OK: imagen sin privilegios, MySQL/Flyway, configuración remota, RSA montada, login, perfil y rechazos 401/403")

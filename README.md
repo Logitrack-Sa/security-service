@@ -18,7 +18,7 @@ Se implementan login, registro, JWT, perfil y administración; cada ruta exige e
 
 ## Endpoints implementados
 
-- **`POST /api/v1/auth/register`**: Registro público exclusivamente `CLIENTE` con BCrypt. Payload inválido devuelve 400, duplicado 409 y escalación de privilegios/vínculos ajenos 403.
+- **`POST /api/v1/auth/register`**: Registro público exclusivamente `CLIENTE` con BCrypt. Payload inválido o escalación de privilegios/vínculos ajenos devuelve 400; duplicado, 409. Una operación administrativa sin el rol requerido devuelve 403.
 - **`POST /api/v1/auth/login`**: Emite JWT RS256 con credenciales válidas; credenciales inválidas devuelven 401 sin distinguir si existe la cuenta.
 - **`GET /api/v1/auth/me`**: Perfil del sujeto autenticado, sin hash ni claves.
 - **`GET /api/v1/auth/jwks`** y **`GET /api/v1/auth/public-key`**: Material público de verificación; nunca la clave privada.
