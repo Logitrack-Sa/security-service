@@ -448,7 +448,8 @@ class AuthLoginAndJwtTest {
                     "mounted-key-v1",
                     "https://custom-issuer.test",
                     List.of("service-a"),
-                    7200L
+                    7200L,
+                    null
             );
 
             RsaKeyProvider customProvider = new RsaKeyProvider(customProps, new DefaultResourceLoader());

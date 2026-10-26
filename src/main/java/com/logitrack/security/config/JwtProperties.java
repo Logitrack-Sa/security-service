@@ -15,6 +15,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *   <li>{@code issuer}: Identificador URI del emisor confiable (claim iss).</li>
  *   <li>{@code audiences}: Lista de audiencias permitidas y destinatarias del token (claim aud).</li>
  *   <li>{@code ttlSeconds}: Tiempo de vida en segundos antes de la expiración del token (claim exp).</li>
+ *   <li>{@code expirationMs}: Tiempo de expiración opcional en milisegundos para compatibilidad con perfiles centralizados.</li>
  * </ul>
  *
  * @param privateKeyLocation ruta o URI al archivo PEM con la clave privada RSA.
@@ -23,6 +24,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param issuer emisor esperado en el claim {@code iss}.
  * @param audiences lista de servicios destinatarios esperados en el claim {@code aud}.
  * @param ttlSeconds duración en segundos de validez de cada token emitido.
+ * @param expirationMs expiración opcional en milisegundos proveniente de Config Server.
  */
 @ConfigurationProperties("logitrack.security.jwt")
 public record JwtProperties(
@@ -31,18 +33,20 @@ public record JwtProperties(
         String keyId,
         String issuer,
         List<String> audiences,
-        long ttlSeconds
+        long ttlSeconds,
+        Long expirationMs
 ) {
 
     /**
-     * Constructor canónico con valores por defecto defensivos cuando no se especifican.
+     * Constructor canónico con normalización defensiva y soporte para milisegundos o segundos.
      *
      * @param privateKeyLocation ruta a la clave privada o nulo si se usa clave efímera.
      * @param publicKeyLocation ruta a la clave pública o nulo.
      * @param keyId identificador de clave {@code kid} (por defecto "logitrack-main").
      * @param issuer emisor del token (por defecto "https://security-service").
-     * @param audiences audiencias permitidas (por defecto courier-service y shipment-service).
+     * @param audiences audiencias permitidas (por defecto security-service, courier-service y shipment-service).
      * @param ttlSeconds duración del token en segundos (por defecto 3600).
+     * @param expirationMs expiración opcional en milisegundos.
      */
     public JwtProperties {
         if (keyId == null || keyId.isBlank()) {
@@ -54,7 +58,9 @@ public record JwtProperties(
         if (audiences == null || audiences.isEmpty()) {
             audiences = List.of("security-service", "courier-service", "shipment-service");
         }
-        if (ttlSeconds <= 0) {
+        if (expirationMs != null && expirationMs > 0) {
+            ttlSeconds = expirationMs / 1000;
+        } else if (ttlSeconds <= 0) {
             ttlSeconds = 3600L;
         }
     }
