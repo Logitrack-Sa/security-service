@@ -30,7 +30,7 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(AdminProperties.class)
+@EnableConfigurationProperties({AdminProperties.class, JwtProperties.class})
 public class SecurityConfiguration {
 
     /**
@@ -84,7 +84,8 @@ public class SecurityConfiguration {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/jwks", "/api/v1/auth/public-key").permitAll()
                         .requestMatchers("/api/v1/users", "/api/v1/users/**").hasRole("ADMIN")
                         .anyRequest().denyAll())
                 .build();

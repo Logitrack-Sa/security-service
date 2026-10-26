@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -31,6 +32,20 @@ public class GlobalExceptionHandler {
      * Constructor público para el manejador global de excepciones.
      */
     public GlobalExceptionHandler() {
+    }
+
+    /**
+     * Captura errores de autenticación y credenciales inválidas (401).
+     *
+     * <p>Retorna un mensaje genérico para evitar la enumeración de usuarios o
+     * la revelación del estado de habilitación de una cuenta.</p>
+     *
+     * @param request petición HTTP en curso.
+     * @return respuesta de error 401 UNAUTHORIZED con mensaje genérico.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> authentication(HttpServletRequest request) {
+        return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Credenciales inválidas", request);
     }
 
     /**
