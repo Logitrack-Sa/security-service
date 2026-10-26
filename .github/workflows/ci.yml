@@ -70,9 +70,36 @@ jobs:
           persist-credentials: false
 
       - name: Construir imagen Docker multietapa Java 25
-        run: docker build -t logitrack/security-service:ci-${{ github.sha }} .
+        run: docker build -t logitrack/security-service:ci-${{ github.sha }} -t local/security-service:ci .
 
       - name: Inspección de metadatos (usuario no privilegiado y puertos)
         run: |
           docker image inspect logitrack/security-service:ci-${{ github.sha }} --format 'User: {{.Config.User}}, Ports: {{json .Config.ExposedPorts}}'
           docker history logitrack/security-service:ci-${{ github.sha }}
+
+      - name: Preparar criptografía descartable y arrancar imagen con MySQL
+        env:
+          SMOKE_FIXTURE_DIR: ${{ runner.temp }}/security-smoke
+          COMPOSE_PROJECT_NAME: security-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 .github/scripts/prepare_smoke.py
+          docker compose -f .github/compose.smoke.yaml up -d
+      - name: Verificar HTTP, JWT y usuario de la imagen
+        env:
+          SMOKE_FIXTURE_DIR: ${{ runner.temp }}/security-smoke
+          COMPOSE_PROJECT_NAME: security-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 .github/scripts/smoke_auth.py
+          test "$(docker compose -f .github/compose.smoke.yaml exec -T security-service id -u)" = 10001
+      - name: Diagnóstico si falla
+        if: failure()
+        env:
+          SMOKE_FIXTURE_DIR: ${{ runner.temp }}/security-smoke
+          COMPOSE_PROJECT_NAME: security-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: docker compose -f .github/compose.smoke.yaml logs --tail 80
+      - name: Eliminar únicamente contenedores de prueba
+        if: always()
+        env:
+          SMOKE_FIXTURE_DIR: ${{ runner.temp }}/security-smoke
+          COMPOSE_PROJECT_NAME: security-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: docker compose -f .github/compose.smoke.yaml down --volumes

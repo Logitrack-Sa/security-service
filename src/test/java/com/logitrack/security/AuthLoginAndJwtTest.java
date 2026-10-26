@@ -452,7 +452,7 @@ class AuthLoginAndJwtTest {
                     null
             );
 
-            RsaKeyProvider customProvider = new RsaKeyProvider(customProps, new DefaultResourceLoader());
+            RsaKeyProvider customProvider = new RsaKeyProvider(customProps, new DefaultResourceLoader(), new org.springframework.mock.env.MockEnvironment());
             customProvider.init();
 
             assertThat(customProvider.getKeyId()).isEqualTo("mounted-key-v1");

@@ -34,8 +34,14 @@ public record JwtProperties(
         String issuer,
         List<String> audiences,
         long ttlSeconds,
-        Long expirationMs
+        Long expirationMs,
+        java.time.Duration tokenTtl
 ) {
+
+    public JwtProperties(String privateKeyLocation, String publicKeyLocation, String keyId, String issuer,
+                         List<String> audiences, long ttlSeconds, Long expirationMs) {
+        this(privateKeyLocation, publicKeyLocation, keyId, issuer, audiences, ttlSeconds, expirationMs, null);
+    }
 
     /**
      * Constructor canónico con normalización defensiva y soporte para milisegundos o segundos.
@@ -48,6 +54,7 @@ public record JwtProperties(
      * @param ttlSeconds duración del token en segundos (por defecto 3600).
      * @param expirationMs expiración opcional en milisegundos.
      */
+    @org.springframework.boot.context.properties.bind.ConstructorBinding
     public JwtProperties {
         if (keyId == null || keyId.isBlank()) {
             keyId = "logitrack-main";
@@ -60,8 +67,13 @@ public record JwtProperties(
         }
         if (expirationMs != null && expirationMs > 0) {
             ttlSeconds = expirationMs / 1000;
+        } else if (tokenTtl != null) {
+            ttlSeconds = tokenTtl.toSeconds();
         } else if (ttlSeconds <= 0) {
             ttlSeconds = 3600L;
+        }
+        if (ttlSeconds < 1 || ttlSeconds > 86400) {
+            throw new IllegalArgumentException("JWT TTL debe estar entre 1 y 86400 segundos");
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.logitrack.security;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logitrack.security.bootstrap.AdminBootstrap;
 import com.logitrack.security.config.AdminProperties;
@@ -421,7 +423,8 @@ class UserRegistrationAndIdentityTest {
             assertThat(userRepository.findByEmail("disabled@logitrack.com")).isEmpty();
 
             var emptyPassProps = new AdminProperties(true, "nopass", "nopass@logitrack.com", "   ");
-            new AdminBootstrap(userRepository, passwordEncoder, emptyPassProps).run(new DefaultApplicationArguments());
+            assertThatThrownBy(() -> new AdminBootstrap(userRepository, passwordEncoder, emptyPassProps).run(new DefaultApplicationArguments()))
+                    .isInstanceOf(IllegalStateException.class);
             assertThat(userRepository.findByEmail("nopass@logitrack.com")).isEmpty();
         }
 

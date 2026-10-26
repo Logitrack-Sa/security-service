@@ -41,12 +41,19 @@ class ConfigServerIntegrationTest {
 
     private static HttpServer mockConfigServer;
     private static int configServerPort;
+    private static java.nio.file.Path privateKey;
 
     /**
      * Inicia un servidor HTTP embebido local que simula las respuestas JSON de Spring Cloud Config Server.
      */
     @BeforeAll
     static void startMockConfigServer() throws Exception {
+        var generator = java.security.KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+        privateKey = Files.createTempFile("config-test-private-", ".pem");
+        privateKey.toFile().deleteOnExit();
+        Files.writeString(privateKey, "-----BEGIN PRIVATE KEY-----\n" + java.util.Base64.getMimeEncoder()
+                .encodeToString(generator.generateKeyPair().getPrivate().getEncoded()) + "\n-----END PRIVATE KEY-----\n");
         mockConfigServer = HttpServer.create(new InetSocketAddress(0), 0);
         configServerPort = mockConfigServer.getAddress().getPort();
 
@@ -59,8 +66,8 @@ class ConfigServerIntegrationTest {
                                     "name", "https://github.com/Logitrack-Sa/config-repo/security-service-dev.properties",
                                     "source", Map.of(
                                             "server.port", "8083",
-                                            "logitrack.security.jwt.issuer", "https://security-service.centralized",
-                                            "logitrack.security.jwt.expiration-ms", "7200000",
+                                            "logitrack.security.issuer", "https://security-service.centralized",
+                                            "logitrack.security.token-ttl", "PT2H",
                                             "logging.level.com.logitrack", "DEBUG"
                                     )
                             )
@@ -97,26 +104,22 @@ class ConfigServerIntegrationTest {
          * Verifica que el contexto de Spring cargue exitosamente las propiedades centralizadas
          * servidas por el Config Server mediante spring.config.import.
          */
-        @Test
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"dev", "prod"})
         @DisplayName("Bootstrap con Config Server simulado resuelve emisor, TTL y puerto centralizados")
-        void bootstrapLoadsCentralizedPropertiesFromConfigServer() {
+        void bootstrapLoadsCentralizedPropertiesFromConfigServer(String profile) {
             try (ConfigurableApplicationContext context = new SpringApplicationBuilder(SecurityApplication.class)
-                    .profiles("dev")
-                    .properties(
-                            "spring.cloud.config.enabled=true",
-                            "spring.config.import=configserver:http://localhost:" + configServerPort,
-                            "DB_URL=jdbc:h2:mem:cfg_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-                            "spring.datasource.url=jdbc:h2:mem:cfg_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-                            "spring.datasource.username=sa",
-                            "spring.datasource.password=",
-                            "security.admin.enabled=false"
-                    )
-                    .run()) {
+                    .profiles(profile)
+                    .run("--CONFIG_SERVER_URL=http://localhost:" + configServerPort,
+                            "--server.port=0", "--security.admin.enabled=false",
+                            "--JWT_PRIVATE_KEY_LOCATION=" + privateKey.toUri(),
+                            "--spring.datasource.url=jdbc:h2:mem:cfg_"+profile+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+                            "--spring.datasource.username=sa", "--spring.datasource.password=fixture-db-password")) {
 
                 JwtProperties jwtProperties = context.getBean(JwtProperties.class);
                 assertThat(jwtProperties.issuer()).isEqualTo("https://security-service.centralized");
                 assertThat(jwtProperties.ttlSeconds()).isEqualTo(7200L); // 7200000 ms -> 7200 s
-                assertThat(context.getEnvironment().getProperty("server.port")).isEqualTo("8083");
+                assertThat(context.getEnvironment().getProperty("server.port")).isEqualTo("0");
             }
         }
     }

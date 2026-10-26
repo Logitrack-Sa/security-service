@@ -8,7 +8,7 @@
     </parent>
     <groupId>com.logitrack</groupId><artifactId>security-service</artifactId><version>0.0.1-SNAPSHOT</version>
     <name>security-service</name>
-    <properties><java.version>25</java.version></properties>
+    <properties><java.version>25</java.version><spring-cloud.version>2025.0.3</spring-cloud.version></properties>
     <dependencies>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
@@ -16,7 +16,7 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-resource-server</artifactId></dependency>
-        <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-config</artifactId><version>4.2.0</version></dependency>
+        <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-config</artifactId></dependency>
         <dependency><groupId>org.springdoc</groupId><artifactId>springdoc-openapi-starter-webmvc-ui</artifactId><version>2.8.17</version></dependency>
         <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-core</artifactId></dependency>
         <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-mysql</artifactId><scope>runtime</scope></dependency>
@@ -27,6 +27,10 @@
         <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency>
 
     </dependencies>
+    <dependencyManagement><dependencies>
+        <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-dependencies</artifactId>
+            <version>${spring-cloud.version}</version><type>pom</type><scope>import</scope></dependency>
+    </dependencies></dependencyManagement>
     <build><plugins>
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId>

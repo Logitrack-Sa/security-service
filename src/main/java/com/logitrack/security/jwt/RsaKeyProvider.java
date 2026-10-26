@@ -29,9 +29,9 @@ import org.springframework.stereotype.Component;
  * Proveedor de claves criptográficas RSA para la firma y verificación de tokens JWT.
  *
  * <p>Soporta la carga segura de claves privadas desde archivos montados en formato PEM (PKCS#8)
- * mediante la propiedad de entorno {@code JWT_PRIVATE_KEY_LOCATION}. Si no se configura una ruta
- * válida o el archivo no existe (como en entornos de desarrollo local o pruebas aisladas),
- * genera de forma automática un par de claves RSA de 2048 bits efímero en memoria.</p>
+ * mediante la propiedad de entorno {@code JWT_PRIVATE_KEY_LOCATION}. Solo el perfil test permite
+ * generar un par efímero cuando no se configuró una clave. Una clave configurada inválida
+ * o un par que no coincide impide el arranque en cualquier perfil.</p>
  *
  * <p>La clave privada nunca es expuesta a través de APIs de red. La clave pública se ofrece
  * a los microservicios consumidores a través de conjuntos de claves JWKS estándar (RFC 7517)
@@ -44,6 +44,7 @@ public class RsaKeyProvider {
 
     private final JwtProperties properties;
     private final ResourceLoader resourceLoader;
+    private final org.springframework.core.env.Environment environment;
 
     private RSAPrivateKey privateKey;
     private RSAPublicKey publicKey;
@@ -55,10 +56,12 @@ public class RsaKeyProvider {
      *
      * @param properties configuración de propiedades JWT.
      * @param resourceLoader cargador de recursos de Spring para resolver rutas de claves.
+     * @param environment entorno que habilita claves efímeras exclusivamente para pruebas.
      */
-    public RsaKeyProvider(JwtProperties properties, ResourceLoader resourceLoader) {
+    public RsaKeyProvider(JwtProperties properties, ResourceLoader resourceLoader, org.springframework.core.env.Environment environment) {
         this.properties = properties;
         this.resourceLoader = resourceLoader;
+        this.environment = environment;
     }
 
     /**
@@ -81,47 +84,37 @@ public class RsaKeyProvider {
     }
 
     private KeyPair loadOrGenerateKeyPair() {
-        if (properties.privateKeyLocation() != null && !properties.privateKeyLocation().isBlank()) {
+        if (properties.privateKeyLocation() == null || properties.privateKeyLocation().isBlank()) {
+            if (!environment.matchesProfiles("test")) {
+                throw new IllegalStateException("JWT_PRIVATE_KEY_LOCATION es obligatoria fuera del perfil test");
+            }
             try {
-                Resource privateResource = resourceLoader.getResource(properties.privateKeyLocation());
-                if (privateResource.exists()) {
-                    String privatePem = privateResource.getContentAsString(StandardCharsets.UTF_8);
-                    RSAPrivateKey loadedPrivate = parsePrivateKeyFromPem(privatePem);
-                    RSAPublicKey loadedPublic = null;
-
-                    if (properties.publicKeyLocation() != null && !properties.publicKeyLocation().isBlank()) {
-                        Resource publicResource = resourceLoader.getResource(properties.publicKeyLocation());
-                        if (publicResource.exists()) {
-                            String publicPem = publicResource.getContentAsString(StandardCharsets.UTF_8);
-                            loadedPublic = parsePublicKeyFromPem(publicPem);
-                        }
-                    }
-
-                    if (loadedPublic == null && loadedPrivate instanceof RSAPrivateCrtKey crtKey) {
-                        KeyFactory kf = KeyFactory.getInstance("RSA");
-                        loadedPublic = (RSAPublicKey) kf.generatePublic(
-                                new RSAPublicKeySpec(crtKey.getModulus(), crtKey.getPublicExponent()));
-                    }
-
-                    if (loadedPublic != null) {
-                        log.info("Material criptográfico RSA cargado exitosamente desde archivo montado: {}",
-                                properties.privateKeyLocation());
-                        return new KeyPair(loadedPublic, loadedPrivate);
-                    }
-                }
-            } catch (IOException | GeneralSecurityException ex) {
-                log.warn("No se pudo cargar la clave privada configurada ({}), utilizando par efímero: {}",
-                        properties.privateKeyLocation(), ex.getMessage());
+                var generator = KeyPairGenerator.getInstance("RSA");
+                generator.initialize(2048);
+                return generator.generateKeyPair();
+            } catch (GeneralSecurityException exception) {
+                throw new IllegalStateException("No se pudo generar material RSA de test", exception);
             }
         }
-
-        log.info("Inicializando par de claves RSA (2048 bits) efímero para emisión de JWT en memoria");
         try {
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-            generator.initialize(2048);
-            return generator.generateKeyPair();
-        } catch (GeneralSecurityException ex) {
-            throw new IllegalStateException("Error al generar par de claves RSA efímero", ex);
+            Resource source = resourceLoader.getResource(properties.privateKeyLocation());
+            RSAPrivateKey privateKey = parsePrivateKeyFromPem(source.getContentAsString(StandardCharsets.UTF_8));
+            RSAPublicKey publicKey;
+            if (properties.publicKeyLocation() != null && !properties.publicKeyLocation().isBlank()) {
+                publicKey = parsePublicKeyFromPem(resourceLoader.getResource(properties.publicKeyLocation())
+                        .getContentAsString(StandardCharsets.UTF_8));
+            } else if (privateKey instanceof RSAPrivateCrtKey crt) {
+                publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(
+                        new RSAPublicKeySpec(crt.getModulus(), crt.getPublicExponent()));
+            } else {
+                throw new IllegalStateException("Se requiere la clave pública correspondiente");
+            }
+            if (!privateKey.getModulus().equals(publicKey.getModulus()) || publicKey.getModulus().bitLength() < 2048) {
+                throw new IllegalStateException("El par RSA debe coincidir y tener al menos 2048 bits");
+            }
+            return new KeyPair(publicKey, privateKey);
+        } catch (IOException | GeneralSecurityException | IllegalArgumentException exception) {
+            throw new IllegalStateException("No se pudo cargar el material RSA configurado; no se sustituye por claves efímeras", exception);
         }
     }
 

@@ -53,9 +53,11 @@ public class AdminBootstrap implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (!properties.enabled() || properties.password() == null || properties.password().isBlank()) {
-            log.info("Provisión de ADMIN inicial desactivada o sin contraseña configurada en el entorno.");
+        if (!properties.enabled()) {
             return;
+        }
+        if (properties.password() == null || properties.password().isBlank() || "admin123".equals(properties.password())) {
+            throw new IllegalStateException("SECURITY_ADMIN_PASSWORD es obligatoria y no admite admin123");
         }
 
         String email = (properties.email() != null && !properties.email().isBlank())

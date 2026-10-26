@@ -25,14 +25,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -100,36 +94,7 @@ public class SecurityConfiguration {
      */
     @Bean
     public JwtDecoder jwtDecoder(RsaKeyProvider rsaKeyProvider, JwtProperties jwtProperties) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(rsaKeyProvider.getPublicKey()).build();
-
-        OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(jwtProperties.issuer());
-        OAuth2TokenValidator<Jwt> algorithmValidator = jwt -> {
-            String alg = (String) jwt.getHeaders().get("alg");
-            if ("RS256".equals(alg)) {
-                return OAuth2TokenValidatorResult.success();
-            }
-            return OAuth2TokenValidatorResult.failure(
-                    new OAuth2Error("invalid_token", "Algoritmo de token no permitido: " + alg, null));
-        };
-        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
-            List<String> aud = jwt.getAudience();
-            if (aud != null && !aud.isEmpty()) {
-                boolean matches = aud.stream().anyMatch(jwtProperties.audiences()::contains);
-                if (matches) {
-                    return OAuth2TokenValidatorResult.success();
-                }
-            }
-            return OAuth2TokenValidatorResult.failure(
-                    new OAuth2Error("invalid_token", "Audiencia de token no autorizada: " + aud, null));
-        };
-
-        OAuth2TokenValidator<Jwt> combinedValidator = new DelegatingOAuth2TokenValidator<>(
-                withIssuer,
-                algorithmValidator,
-                audienceValidator
-        );
-        decoder.setJwtValidator(combinedValidator);
-        return decoder;
+        return com.logitrack.security.jwt.JwtValidation.decoder(rsaKeyProvider, jwtProperties);
     }
 
     /**

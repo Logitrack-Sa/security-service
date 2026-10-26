@@ -77,7 +77,7 @@ public class SecretValidationConfiguration implements ApplicationRunner {
         }
 
         // 3. Validar contraseña de administración inicial si la provisión está habilitada
-        boolean adminEnabled = Boolean.parseBoolean(environment.getProperty("security.admin.enabled", "true"));
+        boolean adminEnabled = Boolean.parseBoolean(environment.getProperty("security.admin.enabled", "false"));
         if (adminEnabled) {
             String adminPassword = environment.getProperty("security.admin.password");
             if (adminPassword == null || adminPassword.isBlank() || "admin123".equals(adminPassword)) {

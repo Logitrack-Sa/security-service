@@ -8,7 +8,6 @@ import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.text.ParseException;
@@ -112,25 +111,10 @@ public class JwtTokenService {
             throw new IllegalArgumentException("El token JWT no puede ser nulo o vacío");
         }
         try {
-            SignedJWT signedJwt = SignedJWT.parse(token);
-
-            if (!JWSAlgorithm.RS256.equals(signedJwt.getHeader().getAlgorithm())) {
-                throw new IllegalArgumentException("Algoritmo no permitido: " + signedJwt.getHeader().getAlgorithm());
-            }
-
-            RSASSAVerifier verifier = new RSASSAVerifier(keyProvider.getPublicKey());
-            if (!signedJwt.verify(verifier)) {
-                throw new IllegalArgumentException("Firma criptográfica inválida");
-            }
-
-            Date expirationTime = signedJwt.getJWTClaimsSet().getExpirationTime();
-            if (expirationTime != null && expirationTime.before(new Date())) {
-                throw new IllegalArgumentException("El token JWT ha expirado");
-            }
-
-            return signedJwt;
-        } catch (ParseException | JOSEException ex) {
-            throw new IllegalArgumentException("Token JWT con formato o firma inválida: " + ex.getMessage(), ex);
+            JwtValidation.decoder(keyProvider, properties).decode(token);
+            return SignedJWT.parse(token);
+        } catch (ParseException | org.springframework.security.oauth2.jwt.JwtException exception) {
+            throw new IllegalArgumentException("Firma o contrato JWT inválida", exception);
         }
     }
 
