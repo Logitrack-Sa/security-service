@@ -460,18 +460,18 @@ class UserRegistrationAndIdentityTest {
         }
 
         /**
-         * Verifica que un usuario no autenticado o con rol no ADMIN no pueda acceder a POST /api/v1/users.
+         * Verifica que un usuario no autenticado reciba 401 Unauthorized en POST /api/v1/users.
          */
         @Test
-        @DisplayName("Usuarios no autenticados o no ADMIN reciben 403 en POST /api/v1/users")
+        @DisplayName("Usuarios no autenticados reciben 401 Unauthorized en POST /api/v1/users")
         void nonAdminForbiddenOnUserCreation() throws Exception {
             var request = new CreateUserRequest("otro@logitrack.com", "Password123!", null, null, Set.of(Role.ADMIN), null, null);
 
-            // Sin autenticación -> 403
+            // Sin autenticación -> 401 Unauthorized
             http.perform(post("/api/v1/users")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(json.writeValueAsString(request)))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isUnauthorized());
         }
 
         /**

@@ -12,7 +12,11 @@ import com.logitrack.security.repository.UserRepository;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,18 +130,53 @@ public class UserService {
     }
 
     /**
+     * Obtiene el perfil de un usuario para el endpoint /me comprobando que la cuenta esté activa.
+     *
+     * @param id identificador del usuario.
+     * @return representación del perfil del usuario autenticado.
+     * @throws ResourceNotFoundException si el usuario no existe.
+     * @throws BadCredentialsException si la cuenta del usuario se encuentra deshabilitada.
+     */
+    public UserResponse findProfileById(UUID id) {
+        var user = users.findById(id).orElseThrow(ResourceNotFoundException::new);
+        if (!user.isEnabled()) {
+            throw new BadCredentialsException("Cuenta de usuario deshabilitada");
+        }
+        return toResponse(user);
+    }
+
+    /**
      * Actualiza el conjunto de roles de un usuario existente.
      *
-     * <p>Operación reservada para administradores autenticados.</p>
+     * <p>Operación reservada exclusivamente para administradores autenticados.
+     * Prohíbe de forma estricta la auto-modificación arbitraria de roles propios.</p>
      *
      * @param userId identificador del usuario.
      * @param roles nuevo conjunto no vacío de roles.
      * @return representación actualizada del usuario.
      * @throws ResourceNotFoundException si el usuario no existe.
+     * @throws PrivilegeEscalationException si el usuario intenta modificar sus propios roles.
      */
     @Transactional
     public UserResponse updateRoles(UUID userId, Set<Role> roles) {
         var user = users.findById(userId).orElseThrow(ResourceNotFoundException::new);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            String currentSubject = null;
+            if (auth.getPrincipal() instanceof Jwt jwt) {
+                currentSubject = jwt.getSubject();
+            } else if (auth.getName() != null) {
+                currentSubject = auth.getName();
+            }
+            if (currentSubject != null && (
+                    currentSubject.equalsIgnoreCase(user.getId().toString())
+                    || currentSubject.equalsIgnoreCase(user.getEmail())
+                    || (user.getUsername() != null && currentSubject.equalsIgnoreCase(user.getUsername())))) {
+                throw new PrivilegeEscalationException("No está permitida la auto-modificación arbitraria de roles propios");
+            }
+        }
+
         user.updateRoles(roles);
         User saved = users.saveAndFlush(user);
         return toResponse(saved);

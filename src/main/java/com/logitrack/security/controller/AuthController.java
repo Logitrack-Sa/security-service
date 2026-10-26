@@ -10,8 +10,11 @@ import com.logitrack.security.service.UserService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +29,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  * <ul>
  *   <li>{@code POST /api/v1/auth/register}: Registro público restringido al rol {@code CLIENTE}.</li>
  *   <li>{@code POST /api/v1/auth/login}: Autenticación de credenciales y emisión de JWT RS256.</li>
+ *   <li>{@code GET /api/v1/auth/me}: Perfil de identidad del sujeto autenticado mediante JWT.</li>
  *   <li>{@code GET /api/v1/auth/jwks}: Conjunto de claves públicas JWKS (RFC 7517) para validación en consumidores.</li>
  *   <li>{@code GET /api/v1/auth/public-key}: Clave pública en formato PEM y metadatos de versión/kid.</li>
  * </ul>
@@ -76,6 +80,22 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Retorna el perfil de identidad del sujeto autenticado a partir del token JWT validado.
+     *
+     * <p>El perfil no contiene hashes de contraseñas ni claves criptográficas.
+     * Si el token es inválido, expirado o no se suministra, el filtro de seguridad responde 401.</p>
+     *
+     * @param jwt token JWT decodificado del contexto de seguridad.
+     * @return representación de identidad del usuario autenticado.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> me(@AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        UserResponse response = userService.findProfileById(userId);
         return ResponseEntity.ok(response);
     }
 

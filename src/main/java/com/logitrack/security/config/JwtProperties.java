@@ -52,7 +52,7 @@ public record JwtProperties(
             issuer = "https://security-service";
         }
         if (audiences == null || audiences.isEmpty()) {
-            audiences = List.of("courier-service", "shipment-service");
+            audiences = List.of("security-service", "courier-service", "shipment-service");
         }
         if (ttlSeconds <= 0) {
             ttlSeconds = 3600L;
