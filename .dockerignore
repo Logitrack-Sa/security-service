@@ -1,0 +1,16 @@
+**/.git
+**/.gitignore
+**/target
+**/.idea
+**/*.iml
+**/*.pem
+**/*.key
+**/*.pub
+**/*.crt
+**/*.log
+**/*.env
+**/*.env.*
+**/scratch
+**/Dockerfile*
+**/README.md
+**/docs
