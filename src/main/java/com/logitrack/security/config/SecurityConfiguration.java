@@ -111,8 +111,23 @@ public class SecurityConfiguration {
             return OAuth2TokenValidatorResult.failure(
                     new OAuth2Error("invalid_token", "Algoritmo de token no permitido: " + alg, null));
         };
+        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
+            List<String> aud = jwt.getAudience();
+            if (aud != null && !aud.isEmpty()) {
+                boolean matches = aud.stream().anyMatch(jwtProperties.audiences()::contains);
+                if (matches) {
+                    return OAuth2TokenValidatorResult.success();
+                }
+            }
+            return OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error("invalid_token", "Audiencia de token no autorizada: " + aud, null));
+        };
 
-        OAuth2TokenValidator<Jwt> combinedValidator = new DelegatingOAuth2TokenValidator<>(withIssuer, algorithmValidator);
+        OAuth2TokenValidator<Jwt> combinedValidator = new DelegatingOAuth2TokenValidator<>(
+                withIssuer,
+                algorithmValidator,
+                audienceValidator
+        );
         decoder.setJwtValidator(combinedValidator);
         return decoder;
     }
