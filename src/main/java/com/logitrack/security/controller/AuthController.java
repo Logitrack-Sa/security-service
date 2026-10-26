@@ -1,5 +1,6 @@
 package com.logitrack.security.controller;
 
+import com.logitrack.security.dto.ErrorResponse;
 import com.logitrack.security.dto.LoginRequest;
 import com.logitrack.security.dto.LoginResponse;
 import com.logitrack.security.dto.RegisterRequest;
@@ -7,6 +8,13 @@ import com.logitrack.security.dto.UserResponse;
 import com.logitrack.security.jwt.RsaKeyProvider;
 import com.logitrack.security.service.AuthService;
 import com.logitrack.security.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Map;
@@ -34,6 +42,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
  *   <li>{@code GET /api/v1/auth/public-key}: Clave pública en formato PEM y metadatos de versión/kid.</li>
  * </ul>
  */
+@Tag(name = "Autenticación", description = "Endpoints de registro público, inicio de sesión, consulta de perfil propio e intercambio de claves públicas criptográficas.")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -61,6 +70,15 @@ public class AuthController {
      * @param request datos de registro proporcionados por el cliente.
      * @return respuesta HTTP 201 Created con la información del usuario creado.
      */
+    @Operation(summary = "Registro público de usuarios", description = "Crea una nueva cuenta asignando exclusivamente el rol CLIENTE. Cualquier intento de especificar roles privilegiados o identidades de dominio es rechazado.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Usuario registrado exitosamente con rol CLIENTE",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o intento de escalación de privilegios",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "El email o nombre de usuario ya se encuentra registrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         UserResponse response = userService.registerPublic(request);
@@ -77,6 +95,15 @@ public class AuthController {
      * @param request credenciales de inicio de sesión (username/email y password).
      * @return respuesta HTTP 200 OK con el token Bearer y su tiempo de vida.
      */
+    @Operation(summary = "Inicio de sesión y emisión de JWT", description = "Valida las credenciales provistas y retorna un token JWT firmado criptográficamente con RS256 conteniendo claims confiables.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Autenticación exitosa y emisión de token Bearer",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Solicitud incompleta o parámetros inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas o usuario no autenticado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
@@ -92,6 +119,14 @@ public class AuthController {
      * @param jwt token JWT decodificado del contexto de seguridad.
      * @return representación de identidad del usuario autenticado.
      */
+    @Operation(summary = "Consultar perfil autenticado actual (/auth/me)", description = "Devuelve los datos de identidad, roles y vínculos de dominio del sujeto asociado al token Bearer suministrado.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Perfil recuperado exitosamente",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Token JWT ausente, expirado o con firma no válida",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());
@@ -104,6 +139,8 @@ public class AuthController {
      *
      * @return conjunto de claves públicas en formato JSON estándar.
      */
+    @Operation(summary = "Exposición de conjunto de claves públicas JWKS", description = "Retorna el conjunto JWKS conforme a RFC 7517 conteniendo las claves públicas RSA activas para validar tokens en los consumidores.")
+    @ApiResponse(responseCode = "200", description = "Conjunto de claves públicas JWKS obtenido")
     @GetMapping(value = "/jwks", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getJwks() {
         return ResponseEntity.ok(rsaKeyProvider.getPublicJwkSet().toJSONObject());
@@ -114,6 +151,8 @@ public class AuthController {
      *
      * @return mapa con el {@code kid}, algoritmo y la clave pública codificada en PEM.
      */
+    @Operation(summary = "Exposición de clave pública RSA en formato PEM", description = "Retorna la clave pública RSA en bloque PEM delimitado junto con su identificador de clave (kid) y algoritmo (RS256).")
+    @ApiResponse(responseCode = "200", description = "Clave pública PEM y metadatos obtenidos")
     @GetMapping("/public-key")
     public ResponseEntity<Map<String, String>> getPublicKey() {
         return ResponseEntity.ok(Map.of(
