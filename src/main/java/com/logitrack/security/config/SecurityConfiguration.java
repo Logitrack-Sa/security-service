@@ -132,6 +132,8 @@ public class SecurityConfiguration {
         return (request, response, authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
+            response.setHeader("WWW-Authenticate", "Bearer");
             ErrorResponse error = new ErrorResponse(
                     Instant.now(),
                     HttpStatus.UNAUTHORIZED.value(),
@@ -155,6 +157,7 @@ public class SecurityConfiguration {
         return (request, response, accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(java.nio.charset.StandardCharsets.UTF_8.name());
             ErrorResponse error = new ErrorResponse(
                     Instant.now(),
                     HttpStatus.FORBIDDEN.value(),

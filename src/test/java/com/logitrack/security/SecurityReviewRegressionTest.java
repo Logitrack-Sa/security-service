@@ -25,6 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,7 +60,12 @@ class SecurityReviewRegressionTest {
                 .keyID(scenario.equals("kid") ? "other-key" : keys.getKeyId()).build(), claims.build());
         signed.sign(new RSASSASigner(keys.getPrivateKey()));
         String token = signed.serialize();
-        http.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+        var response = http.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized()).andReturn().getResponse();
+        var body = new String(response.getContentAsByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(response.getCharacterEncoding()).isEqualTo("UTF-8");
+        assertThat(response.getHeader("WWW-Authenticate")).isEqualTo("Bearer");
+        assertThat(body).contains("inválida").doesNotContain("\uFFFD");
         assertThatThrownBy(() -> tokens.parseAndValidate(token)).isInstanceOf(IllegalArgumentException.class);
     }
 }
