@@ -1,18 +1,17 @@
 # security-service
 
-Repositorio inicial del Sprint 2 de LogiTrack. **Todavía no implementa el servicio ni contiene configuración productiva.**
+Base independiente de Spring Boot 3.5.16 y Java 25 para la issue #1. Capas `entity`, `repository`, `service`, `dto`, `controller` (errores) y `config`; Maven Wrapper y Flyway. No depende de shipment ni courier.
 
-[Tablero del Sprint 2](https://github.com/orgs/Logitrack-Sa/projects/2) · [Contratos y puertos](https://github.com/Logitrack-Sa/shipment-service/blob/main/docs/sprint2/CONTRATOS.md) · [Workflow](https://github.com/Logitrack-Sa/shipment-service/blob/main/docs/sprint2/WORKFLOW.md)
+## Arranque y esquema
 
-Las issues del repositorio definen responsable, puntos, criterios y pruebas independientes. Usar fixtures y dobles para avanzar sin esperar servicios de otros integrantes. Se conserva el Sprint 1 en shipment-service.
+Crear una base MySQL exclusiva, por ejemplo `security_db`. Definir `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; `SERVER_PORT` es opcional (8083). Ejecutar `./mvnw spring-boot:run` o abrir pom.xml con JDK 25. Flyway crea users y user_roles; Hibernate valida, no genera el esquema. No usar cuentas root ni registrar secretos en Git.
 
-Base actual: README, plantilla de PR, formulario de issues y revisor IA en GitHub Actions. No se agregan clases Java, POM, migraciones, Dockerfiles ni propiedades de aplicación hasta iniciar las issues.
+User tiene UUID, email normalizado y único, hash BCrypt, roles ADMIN/CLIENTE/REPARTIDOR, habilitación y versión optimista. Las respuestas omiten el hash. No hay usuarios ni contraseñas iniciales incorporados.
 
-La IA devuelve hallazgos sobre PR y sugerencias de pruebas; no planifica, no aprueba ni integra. CI de esta base verifica automatización. Las pruebas Maven y Docker se agregan en sus issues cuando exista la aplicación.
+Solo GET /actuator/health es público y devuelve estado mínimo. El resto se deniega mientras se implementan autenticación y autorización en sus issues. Esta entrega no implementa login, registro público, JWT, provisión de ADMIN ni vinculación de identidades; tampoco activa Config Client o Docker de futuras tareas.
 
-No incorporar credenciales, claves JWT privadas ni archivos .env. Java25 para aplicaciones; config-repo es únicamente Git de propiedades no sensibles dev/prod.
+## Verificación
 
-## Identidades de dominio
+`./mvnw clean verify` usa H2 aislado en modo MySQL. El workflow bootstrap repite la suite con MySQL 8.4 y Flyway. Para repetir con una base descartable propia: TEST_DB_URL, TEST_DB_USERNAME y TEST_DB_PASSWORD. Nunca apuntar tests a datos reales.
 
-El UUID del usuario no equivale automáticamente al UUID del cliente o repartidor. Las asociaciones confiables se guardan y se gestionan por ADMIN; el registro público no permite elegir roles privilegiados ni IDs ajenos. Los consumidores verifican JWT y pertenencia localmente. Ver el contrato central antes de implementar.
-
+[Contratos](https://github.com/Logitrack-Sa/shipment-service/blob/main/docs/sprint2/CONTRATOS.md) · [Tablero](https://github.com/orgs/Logitrack-Sa/projects/2). El revisor IA complementa las pruebas y la revisión humana.

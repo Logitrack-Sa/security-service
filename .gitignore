@@ -8,3 +8,7 @@ target/
 *.key
 node_modules/
 .DS_Store
+
+/target/
+/.idea/
+*.iml
