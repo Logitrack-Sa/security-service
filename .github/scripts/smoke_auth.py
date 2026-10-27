@@ -25,7 +25,16 @@ else: raise SystemExit("La imagen no inició con MySQL y Config de prueba")
 
 call("/api/v1/auth/me", expected=401)
 call("/api/v1/auth/login", "POST", {"username":"fixture-admin", "password":"invalid"}, expected=401)
-login = call("/api/v1/auth/login", "POST", {"username":"fixture-admin", "password":"only-ci-admin-password"})
+for attempt in range(30):
+    try:
+        login = call("/api/v1/auth/login", "POST", {"username":"fixture-admin", "password":"only-ci-admin-password"})
+        break
+    except AssertionError as failure:
+        # HTTP puede iniciar antes de que ApplicationRunner termine de provisionar ADMIN.
+        if "HTTP 401," not in str(failure):
+            raise
+        time.sleep(1)
+else: raise SystemExit("ADMIN de prueba no estuvo disponible dentro del límite")
 token = login["accessToken"]
 assert call("/api/v1/auth/me", token=token)["roles"] == ["ADMIN"]
 call("/api/v1/auth/me", token=token+"invalid", expected=401)
