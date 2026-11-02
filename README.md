@@ -40,3 +40,13 @@ CI también ejecuta Javadoc y construye la imagen. El smoke de la imagen usa MyS
 [Revisión de las entregas de Gonzalo](docs/sprint2/REVISION-GONZALO.md).
 
 [Contratos](https://github.com/Logitrack-Sa/shipment-service/blob/main/docs/sprint2/CONTRATOS.md) · [Tablero](https://github.com/orgs/Logitrack-Sa/projects/2). El revisor IA complementa las pruebas y la revisión humana.
+
+## Registro en Eureka - Sprint 3 (#78)
+
+Usar `SPRING_PROFILES_ACTIVE=prod,sprint3` y `CONFIG_SERVER_URL` para obtener
+las propiedades centralizadas. En Compose, `EUREKA_SERVER_URL=http://eureka-server:8065/eureka/`
+y `SERVICE_HOST=security-service` anuncian un nombre alcanzable desde el Gateway.
+El cliente se registra como `SECURITY-SERVICE`. El perfil test desactiva
+el descubrimiento para que las suites aisladas no dependan de infraestructura.
+Sin el perfil sprint3, `EUREKA_CLIENT_ENABLED=false` conserva el arranque del Sprint 2.
+La prueba distribuida debe comprobar registro UP, puerto anunciado y renovacion.
