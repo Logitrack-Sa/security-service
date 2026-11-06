@@ -5,10 +5,12 @@ import com.logitrack.security.dto.RegisterRequest;
 import com.logitrack.security.dto.UserResponse;
 import com.logitrack.security.entity.Role;
 import com.logitrack.security.entity.User;
+import com.logitrack.security.entity.VerificationToken;
 import com.logitrack.security.exception.DuplicateResourceException;
 import com.logitrack.security.exception.PrivilegeEscalationException;
 import com.logitrack.security.exception.ResourceNotFoundException;
 import com.logitrack.security.repository.UserRepository;
+import com.logitrack.security.repository.VerificationTokenRepository;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -38,16 +40,25 @@ public class UserService {
 
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationTokenRepository verificationTokens;
+    private final EmailService emailService;
 
     /**
      * Construye el servicio con sus dependencias requeridas.
      *
      * @param users repositorio de usuarios.
      * @param passwordEncoder codificador seguro de contraseñas.
+     * @param verificationTokens repositorio de tokens de verificación.
+     * @param emailService servicio de envío de correos electrónicos.
      */
-    public UserService(UserRepository users, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository users,
+                       PasswordEncoder passwordEncoder,
+                       VerificationTokenRepository verificationTokens,
+                       EmailService emailService) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
+        this.verificationTokens = verificationTokens;
+        this.emailService = emailService;
     }
 
     /**
@@ -78,7 +89,14 @@ public class UserService {
 
         String passwordHash = passwordEncoder.encode(request.password());
         User user = new User(email, username, request.name(), passwordHash, Set.of(Role.CLIENTE), null, null);
+        user.setEnabled(false);
+        user.setEmailVerified(false);
         User saved = users.save(user);
+
+        VerificationToken verificationToken = new VerificationToken(saved, 24);
+        verificationTokens.save(verificationToken);
+
+        emailService.sendVerificationEmail(saved.getEmail(), verificationToken.getToken());
 
         return toResponse(saved);
     }
@@ -112,6 +130,8 @@ public class UserService {
 
         String passwordHash = passwordEncoder.encode(request.password());
         User user = new User(email, username, request.name(), passwordHash, request.roles(), request.customerId(), request.courierId());
+        user.setEnabled(true);
+        user.setEmailVerified(true);
         User saved = users.save(user);
 
         return toResponse(saved);
@@ -270,6 +290,7 @@ public class UserService {
                 user.getName(),
                 user.getRoles(),
                 user.isEnabled(),
+                user.isEmailVerified(),
                 user.getCustomerId(),
                 user.getCourierId()
         );

@@ -76,6 +76,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @Column(name = "customer_id", unique = true)
     private UUID customerId;
 
@@ -167,6 +170,24 @@ public class User {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    /**
+     * Retorna si el correo electrónico ha sido verificado.
+     *
+     * @return {@code true} si el correo fue verificado, {@code false} de lo contrario.
+     */
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    /**
+     * Modifica el estado de verificación del correo electrónico.
+     *
+     * @param emailVerified {@code true} si el correo está verificado, {@code false} de lo contrario.
+     */
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     /**

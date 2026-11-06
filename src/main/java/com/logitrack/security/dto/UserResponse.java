@@ -16,6 +16,7 @@ import java.util.UUID;
  * @param name nombre y apellido o razón social opcional.
  * @param roles conjunto de roles asignados.
  * @param enabled estado de habilitación de la cuenta.
+ * @param emailVerified estado de verificación del correo electrónico.
  * @param customerId identificador único de cliente en shipment-service (si está vinculado).
  * @param courierId identificador único de repartidor en courier-service (si está vinculado).
  */
@@ -26,6 +27,7 @@ public record UserResponse(
         String name,
         Set<Role> roles,
         boolean enabled,
+        boolean emailVerified,
         UUID customerId,
         UUID courierId
 ) {
@@ -45,6 +47,13 @@ public record UserResponse(
      * @param enabled estado activo o inactivo.
      */
     public UserResponse(UUID id, String email, Set<Role> roles, boolean enabled) {
-        this(id, email, null, null, roles, enabled, null, null);
+        this(id, email, null, null, roles, enabled, false, null, null);
+    }
+
+    /**
+     * Constructor de compatibilidad sin el campo emailVerified.
+     */
+    public UserResponse(UUID id, String email, String username, String name, Set<Role> roles, boolean enabled, UUID customerId, UUID courierId) {
+        this(id, email, username, name, roles, enabled, false, customerId, courierId);
     }
 }

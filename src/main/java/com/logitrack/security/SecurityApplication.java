@@ -2,6 +2,7 @@ package com.logitrack.security;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * Punto de entrada principal para el microservicio {@code security-service}.
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * <p>Responsable de la autenticación, registro de usuarios, control de roles
  * y vinculación de identidades del sistema LogiTrack.</p>
  */
+@EnableAsync
 @SpringBootApplication(exclude = org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class)
 public class SecurityApplication {
 

@@ -71,6 +71,8 @@ public class AdminBootstrap implements ApplicationRunner {
         if (userRepository.findByEmail(email).isEmpty() && userRepository.findByUsername(username).isEmpty()) {
             String hash = passwordEncoder.encode(properties.password());
             User admin = new User(email, username, "Administrador Inicial", hash, Set.of(Role.ADMIN), null, null);
+            admin.setEnabled(true);
+            admin.setEmailVerified(true);
             userRepository.save(admin);
             log.info("ADMIN inicial provisionado exitosamente para identificador '{}'.", username);
         } else {
