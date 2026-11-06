@@ -234,6 +234,31 @@ class AuthLoginAndJwtTest {
             assertThat(signedJwt.getJWTClaimsSet().getClaim("customerId")).isNull();
             assertThat(signedJwt.getJWTClaimsSet().getClaim("courierId")).isNull();
         }
+
+        /**
+         * Verifica que el JWT emitido contenga el claim booleano email_verified.
+         */
+        @Test
+        @DisplayName("JWT contiene claim email_verified con el estado de verificación del usuario")
+        void jwtContainsEmailVerifiedClaim() throws Exception {
+            var user = new User("verificado@logitrack.com", "verificado_user", "Verificado",
+                    passwordEncoder.encode("Pass123!"), Set.of(Role.CLIENTE), null, null);
+            user.setEmailVerified(true);
+            userRepository.saveAndFlush(user);
+
+            var request = new LoginRequest("verificado_user", null, "Pass123!");
+            var result = http.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode response = json.readTree(result.getResponse().getContentAsString());
+            String token = response.get("accessToken").asText();
+            SignedJWT signedJwt = SignedJWT.parse(token);
+
+            assertThat(signedJwt.getJWTClaimsSet().getBooleanClaim("email_verified")).isTrue();
+        }
     }
 
     @Nested

@@ -74,6 +74,9 @@ class UserRegistrationAndIdentityTest {
     private UserRepository userRepository;
 
     @Autowired
+    private com.logitrack.security.repository.VerificationTokenRepository verificationTokenRepository;
+
+    @Autowired
     private UserService userService;
 
     @Autowired
@@ -115,7 +118,8 @@ class UserRegistrationAndIdentityTest {
                     .andExpect(jsonPath("$.name", is("Juan Pérez")))
                     .andExpect(jsonPath("$.roles", hasItem("CLIENTE")))
                     .andExpect(jsonPath("$.roles.length()", is(1)))
-                    .andExpect(jsonPath("$.enabled", is(true)))
+                    .andExpect(jsonPath("$.enabled", is(false)))
+                    .andExpect(jsonPath("$.emailVerified", is(false)))
                     .andExpect(jsonPath("$.customerId").doesNotExist())
                     .andExpect(jsonPath("$.courierId").doesNotExist())
                     .andExpect(jsonPath("$.password").doesNotExist())
@@ -134,6 +138,15 @@ class UserRegistrationAndIdentityTest {
             assertThat(storedUser.getRoles()).containsExactly(Role.CLIENTE);
             assertThat(storedUser.getCustomerId()).isNull();
             assertThat(storedUser.getCourierId()).isNull();
+            assertThat(storedUser.isEnabled()).isFalse();
+            assertThat(storedUser.isEmailVerified()).isFalse();
+
+            var tokens = verificationTokenRepository.findAllByUser(storedUser);
+            assertThat(tokens).hasSize(1);
+            var token = tokens.get(0);
+            assertThat(token.getToken()).hasSize(36);
+            assertThat(token.isExpired()).isFalse();
+            assertThat(token.isRevoked()).isFalse();
         }
 
         /**

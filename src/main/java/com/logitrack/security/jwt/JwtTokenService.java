@@ -72,7 +72,8 @@ public class JwtTokenService {
                 .audience(properties.audiences())
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(expiresAt))
-                .claim("roles", roleNames);
+                .claim("roles", roleNames)
+                .claim("email_verified", user.isEmailVerified());
 
         if (user.getCustomerId() != null) {
             claimsBuilder.claim("customerId", user.getCustomerId().toString());
