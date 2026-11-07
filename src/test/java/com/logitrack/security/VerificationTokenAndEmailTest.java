@@ -38,6 +38,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -318,11 +319,77 @@ class VerificationTokenAndEmailTest {
                 .when(mailSender).send(any(SimpleMailMessage.class));
 
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
-        EmailService service = new EmailService(mailSender, registry, "http://localhost:3000/verify-email", "noreply@logitrack.com", "smtp.gmail.com", "dummy-password");
+        EmailService service = new EmailService(mailSender, registry, "http://localhost:3000/verify-email", "noreply@logitrack.com", "smtp.gmail.com", "test-smtp-password");
         // No debe lanzar excepción
         service.sendVerificationEmail("fallo@logitrack.com", "dummy-token-uuid");
 
         verify(mailSender).send(any(SimpleMailMessage.class));
         assertThat(service.getFailureCount()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("EmailService rechaza explícitamente la configuración cuando spring.mail.password está vacío o en blanco")
+    void emailServiceRejectsWhenPasswordIsEmptyOrBlank() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        EmailService serviceWithEmptyPassword = new EmailService(
+                mailSender, registry, "http://localhost:3000/verify-email", "noreply@logitrack.com", "smtp.gmail.com", ""
+        );
+
+        assertThat(serviceWithEmptyPassword.hasValidSmtpProperties()).isFalse();
+        assertThatThrownBy(serviceWithEmptyPassword::validateSmtpConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Configuración SMTP inválida");
+
+        serviceWithEmptyPassword.sendVerificationEmail("test@logitrack.com", "token123");
+        assertThat(serviceWithEmptyPassword.getFailureCount()).isEqualTo(1.0);
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+
+        EmailService serviceWithBlankPassword = new EmailService(
+                mailSender, registry, "http://localhost:3000/verify-email", "noreply@logitrack.com", "smtp.gmail.com", "   "
+        );
+
+        assertThat(serviceWithBlankPassword.hasValidSmtpProperties()).isFalse();
+        assertThatThrownBy(serviceWithBlankPassword::validateSmtpConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Configuración SMTP inválida");
+
+        serviceWithBlankPassword.sendVerificationEmail("test@logitrack.com", "token123");
+        assertThat(serviceWithBlankPassword.getFailureCount()).isEqualTo(2.0);
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    @DisplayName("registerPublic rechaza la operación con IllegalStateException si no hay sincronización transaccional activa y no envía correo")
+    void registerPublicRejectsWhenNoTransactionalSynchronizationActive() {
+        var mockUsers = Mockito.mock(UserRepository.class);
+        var mockTokens = Mockito.mock(VerificationTokenRepository.class);
+        var mockEmail = Mockito.mock(EmailService.class);
+        var mockEncoder = Mockito.mock(PasswordEncoder.class);
+
+        User dummySavedUser = new User("no.sync@logitrack.com", "hash", Set.of(Role.CLIENTE));
+        Mockito.when(mockUsers.save(any(User.class))).thenReturn(dummySavedUser);
+        Mockito.when(mockTokens.save(any(VerificationToken.class))).thenAnswer(i -> i.getArgument(0));
+
+        UserService standaloneService = new UserService(mockUsers, mockEncoder, mockTokens, mockEmail);
+
+        var request = new RegisterRequest(
+                "no.sync@logitrack.com",
+                "PasswordSeguro123!",
+                "nosync",
+                "No Sync User",
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThat(TransactionSynchronizationManager.isSynchronizationActive()).isFalse();
+
+        assertThatThrownBy(() -> standaloneService.registerPublic(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("sincronización transaccional activa");
+
+        verify(mockEmail, never()).sendVerificationEmail(any(), any());
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
     }
 }

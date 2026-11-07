@@ -98,16 +98,16 @@ public class UserService {
         VerificationToken verificationToken = new VerificationToken(saved, 24);
         verificationTokens.save(verificationToken);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    emailService.sendVerificationEmail(saved.getEmail(), verificationToken.getToken());
-                }
-            });
-        } else {
-            emailService.sendVerificationEmail(saved.getEmail(), verificationToken.getToken());
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("La registración pública requiere sincronización transaccional activa para el despacho del correo de verificación");
         }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                emailService.sendVerificationEmail(saved.getEmail(), verificationToken.getToken());
+            }
+        });
 
         return toResponse(saved);
     }

@@ -50,9 +50,9 @@ public class EmailService {
             JavaMailSender mailSender,
             MeterRegistry meterRegistry,
             @Value("${logitrack.frontend.verification-url:http://localhost:3000/verify-email}") String verificationBaseUrl,
-            @Value("${spring.mail.username:noreply@logitrack.com}") String fromEmail,
+            @Value("${spring.mail.username:}") String fromEmail,
             @Value("${spring.mail.host:smtp.gmail.com}") String smtpHost,
-            @Value("${spring.mail.password:dummy-password}") String smtpPassword
+            @Value("${spring.mail.password:}") String smtpPassword
     ) {
         this.mailSender = mailSender;
         this.verificationBaseUrl = verificationBaseUrl;
@@ -82,7 +82,7 @@ public class EmailService {
             String verificationBaseUrl,
             String fromEmail
     ) {
-        this(mailSender, new SimpleMeterRegistry(), verificationBaseUrl, fromEmail, "smtp.gmail.com", "dummy-password");
+        this(mailSender, new SimpleMeterRegistry(), verificationBaseUrl, fromEmail, "smtp.gmail.com", "");
     }
 
     /**
@@ -120,10 +120,26 @@ public class EmailService {
         }
     }
 
-    private boolean hasValidSmtpProperties() {
+    /**
+     * Valida explícitamente si las propiedades SMTP requeridas están configuradas y no están en blanco.
+     *
+     * @return true si host, username y password están presentes y no vacíos; false en caso contrario.
+     */
+    public boolean hasValidSmtpProperties() {
         return smtpHost != null && !smtpHost.isBlank()
                 && smtpUsername != null && !smtpUsername.isBlank()
                 && smtpPassword != null && !smtpPassword.isBlank();
+    }
+
+    /**
+     * Valida explícitamente la configuración SMTP, rechazando valores vacíos o en blanco.
+     *
+     * @throws IllegalStateException si alguna de las credenciales o propiedades requeridas está vacía o en blanco.
+     */
+    public void validateSmtpConfiguration() {
+        if (!hasValidSmtpProperties()) {
+            throw new IllegalStateException("Configuración SMTP inválida: host, username y password son requeridos y no pueden estar vacíos ni en blanco");
+        }
     }
 
     public double getFailureCount() {
