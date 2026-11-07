@@ -207,4 +207,13 @@ public class User {
     public void setName(String name) {
         this.name = (name != null && !name.isBlank()) ? name.strip() : null;
     }
+
+    /**
+     * Actualiza el hash de contraseña del usuario (p. ej. al hacer upsert del ADMIN inicial).
+     *
+     * @param passwordHash nuevo hash BCrypt de la contraseña.
+     */
+    public void updatePasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }
