@@ -4,9 +4,12 @@ import com.logitrack.security.dto.ErrorResponse;
 import com.logitrack.security.dto.LoginRequest;
 import com.logitrack.security.dto.LoginResponse;
 import com.logitrack.security.dto.RegisterRequest;
+import com.logitrack.security.dto.ResendVerificationRequest;
 import com.logitrack.security.dto.UserResponse;
 import com.logitrack.security.jwt.RsaKeyProvider;
 import com.logitrack.security.service.AuthService;
+import com.logitrack.security.service.EmailVerificationService;
+import com.logitrack.security.service.ProfileService;
 import com.logitrack.security.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,8 +21,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -47,6 +51,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private final EmailVerificationService verification;
+    private final ProfileService profiles;
     private final UserService userService;
     private final AuthService authService;
     private final RsaKeyProvider rsaKeyProvider;
@@ -58,7 +64,11 @@ public class AuthController {
      * @param authService servicio de autenticación y emisión de tokens.
      * @param rsaKeyProvider proveedor de claves públicas y JWKS.
      */
-    public AuthController(UserService userService, AuthService authService, RsaKeyProvider rsaKeyProvider) {
+    public AuthController(UserService userService, AuthService authService, RsaKeyProvider rsaKeyProvider,
+                          EmailVerificationService verification,
+                          ProfileService profiles) {
+        this.verification = verification;
+        this.profiles = profiles;
         this.userService = userService;
         this.authService = authService;
         this.rsaKeyProvider = rsaKeyProvider;
@@ -87,6 +97,28 @@ public class AuthController {
                 .buildAndExpand(response.id())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @Operation(summary = "Confirmar correo electrónico")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Cuenta confirmada"),
+            @ApiResponse(responseCode = "400", description = "VERIFICATION_TOKEN_EXPIRED",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))),
+            @ApiResponse(responseCode = "404", description = "INVALID_VERIFICATION_TOKEN",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    })
+    @PostMapping("/verify-email")
+    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam String token) {
+        verification.verify(token);
+        return ResponseEntity.ok(Map.of("verified", true, "message", "Cuenta confirmada exitosamente."));
+    }
+
+    @Operation(summary = "Solicitar un nuevo enlace de activación")
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Map<String, Object>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+        verification.resend(request.email());
+        return ResponseEntity.ok(Map.of("sent", true, "message", "Si la cuenta requiere verificación, se enviará un nuevo enlace de activación."));
     }
 
     /**
@@ -129,8 +161,7 @@ public class AuthController {
     })
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        UserResponse response = userService.findProfileById(userId);
+        UserResponse response = profiles.findProfile(jwt.getSubject());
         return ResponseEntity.ok(response);
     }
 

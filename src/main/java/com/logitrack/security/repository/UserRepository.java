@@ -1,9 +1,13 @@
 package com.logitrack.security.repository;
 
 import com.logitrack.security.entity.User;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repositorio Spring Data JPA para la entidad {@link User}.
@@ -12,6 +16,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * y por identificadores de dominio vinculados (customerId, courierId) garantizando unicidad.</p>
  */
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findLockedById(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where lower(u.email) = :email")
+    Optional<User> findLockedByEmail(@Param("email") String email);
+
 
     /**
      * Busca un usuario por su email normalizado.

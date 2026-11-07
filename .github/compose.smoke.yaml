@@ -1,5 +1,12 @@
 # Únicamente CI: claves y credenciales descartables, Config simulado.
 services:
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 3s
+      timeout: 3s
+      retries: 10
   mysql:
     image: mysql:8.4
     environment:
@@ -26,6 +33,7 @@ services:
     image: local/security-service:ci
     ports: ["127.0.0.1:8083:8083"]
     environment:
+      SPRING_DATA_REDIS_HOST: redis
       CONFIG_SERVER_URL: http://config:8765
       DB_URL: jdbc:mysql://mysql:3306/security_ci?allowPublicKeyRetrieval=true&sslMode=REQUIRED
       DB_USERNAME: security_ci
@@ -41,5 +49,6 @@ services:
       - ${SMOKE_FIXTURE_DIR:?}/private.pem:/secrets/private.pem:ro
       - ${SMOKE_FIXTURE_DIR:?}/public.pem:/secrets/public.pem:ro
     depends_on:
+      redis: { condition: service_healthy }
       mysql: { condition: service_healthy }
       config: { condition: service_healthy }

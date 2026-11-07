@@ -50,3 +50,50 @@ El cliente se registra como `SECURITY-SERVICE`. El perfil test desactiva
 el descubrimiento para que las suites aisladas no dependan de infraestructura.
 Sin el perfil sprint3, `EUREKA_CLIENT_ENABLED=false` conserva el arranque del Sprint 2.
 La prueba distribuida debe comprobar registro UP, puerto anunciado y renovacion.
+
+## Verificación de correo y Redis — Sprint 4 (#101, #102)
+
+El registro público crea una cuenta deshabilitada, `emailVerified=false` y un token
+UUID v4 válido durante 24 horas. El envío Gmail SMTP se despacha con `@Async`
+únicamente después del commit. Configurar `GMAIL_SMTP_USERNAME`,
+`GMAIL_SMTP_APP_PASSWORD` y, opcionalmente, `FRONTEND_URL` (por defecto
+`http://localhost:3000`). No guardar credenciales en Git.
+
+- `POST /api/v1/auth/verify-email?token=...`: activa la cuenta, verifica el correo y
+  revoca sus tokens en una transacción. Devuelve `200` con `verified=true`.
+  Un token vencido devuelve `400 VERIFICATION_TOKEN_EXPIRED`; uno inexistente,
+  revocado o usado devuelve `404 INVALID_VERIFICATION_TOKEN`, ambos como
+  `application/problem+json` con `status`, `detail`, `instance` y `code`.
+- `POST /api/v1/auth/resend-verification`, cuerpo `{"email":"cliente@example.com"}`:
+  revoca los enlaces anteriores, genera uno nuevo y despacha su correo después del
+  commit. Devuelve `200` con `sent=true` y un mensaje condicional uniforme, incluso
+  si la cuenta no existe o ya está verificada; no confirma entrega SMTP.
+- Confirmación y reenvío bloquean la misma fila de usuario para serializar cambios
+  concurrentes y evitar consumir dos veces un token o dejar dos reenvíos activos.
+
+`GET /api/v1/auth/me` usa Cache-Aside en Redis, caché `user_profiles`, TTL de 15
+minutos y valores JSON de `UserResponse` sin contraseñas. La clave lógica es
+`user::username::<sub>`: el nombre del principal de Spring Security es el UUID
+inmutable del JWT, no el campo opcional `User.username`. Así se conserva el
+contrato de los JWT existentes sin mezclar perfiles ni hacer consultas SQL en un
+acierto de caché. Las claves físicas llevan el prefijo `user_profiles::`.
+Verificar correo, cambiar roles o vincular cliente/repartidor invalida el perfil
+solamente después del commit; un rollback conserva la entrada anterior.
+
+Configurar `SPRING_DATA_REDIS_HOST` y `SPRING_DATA_REDIS_PORT` (o `REDIS_HOST` y
+`REDIS_PORT` sin Config Server), y `REDIS_PASSWORD` si corresponde. El fallo de
+Redis se propaga al acceso al perfil; el despliegue debe tener Redis disponible.
+La invalidación cambia los datos de `/me`, no los roles de JWT ya emitidos.
+
+Pruebas: `./mvnw verify` ejecuta el flujo HTTP con H2 y correo simulado. Para
+incluir TTL, serialización, aciertos e invalidación transaccional contra Redis
+real, iniciar una instancia **descartable** y ejecutar
+`TEST_REDIS_PORT=16379 ./mvnw verify`. La suite limpia `user_profiles`; no apuntarla
+a un Redis con datos reales. CI ejecuta estas pruebas con Redis tanto sobre H2
+como sobre MySQL. El envío y la recepción reales en Gmail quedan como validación
+manual separada.
+
+En equipos con memoria o CPU limitadas, evitar suites completas y contenedores
+locales. Para comprobar solamente la compilación de fuentes y pruebas:
+`JAVA_TOOL_OPTIONS="-Xmx256m -XX:ActiveProcessorCount=1" ./mvnw -DskipTests test-compile`.
+La integración con Redis/MySQL queda a cargo de GitHub Actions.
