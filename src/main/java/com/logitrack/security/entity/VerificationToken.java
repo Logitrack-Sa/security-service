@@ -8,8 +8,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -38,7 +39,7 @@ public class VerificationToken {
     @Column(nullable = false, unique = true, length = 36)
     private String token; // UUID v4
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -55,7 +56,11 @@ public class VerificationToken {
         this.revoked = false;
     }
 
+    public boolean isExpired(Clock clock) {
+        return !Instant.now(clock).isBefore(this.expiryDate);
+    }
+
     public boolean isExpired() {
-        return Instant.now().isAfter(this.expiryDate);
+        return isExpired(Clock.systemUTC());
     }
 }

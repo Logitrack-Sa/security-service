@@ -1,7 +1,11 @@
 package com.logitrack.security.service;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -13,8 +17,8 @@ import org.springframework.stereotype.Service;
  *
  * <p>Despacha correos mediante JavaMailSender en un hilo independiente (@Async)
  * para no bloquear las solicitudes HTTP de registro ni las transacciones de base de datos.
- * Captura excepciones de red o de autenticación SMTP para asegurar la resiliencia en entornos
- * de prueba o desarrollo sin conectividad saliente.</p>
+ * Registra métricas de observabilidad mediante Micrometer Counter ante éxitos y fallos
+ * de entrega SMTP.</p>
  */
 @Service
 public class EmailService {
@@ -24,22 +28,61 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final String verificationBaseUrl;
     private final String fromEmail;
+    private final String smtpHost;
+    private final String smtpUsername;
+    private final String smtpPassword;
+
+    private final Counter emailFailureCounter;
+    private final Counter emailSuccessCounter;
 
     /**
-     * Construye el servicio inyectando el emisor de correo y las propiedades de configuración.
+     * Construye el servicio inyectando el emisor de correo, el registro de métricas y las propiedades de configuración.
      *
      * @param mailSender componente de envío de correos de Spring.
+     * @param meterRegistry registro de métricas de Micrometer.
      * @param verificationBaseUrl URL base del frontend para el enlace de verificación.
      * @param fromEmail dirección de correo de origen.
+     * @param smtpHost host del servidor SMTP.
+     * @param smtpPassword credencial o token de aplicación SMTP.
      */
+    @Autowired
     public EmailService(
             JavaMailSender mailSender,
+            MeterRegistry meterRegistry,
             @Value("${logitrack.frontend.verification-url:http://localhost:3000/verify-email}") String verificationBaseUrl,
-            @Value("${spring.mail.username:noreply@logitrack.com}") String fromEmail
+            @Value("${spring.mail.username:}") String fromEmail,
+            @Value("${spring.mail.host:smtp.gmail.com}") String smtpHost,
+            @Value("${spring.mail.password:}") String smtpPassword
     ) {
         this.mailSender = mailSender;
         this.verificationBaseUrl = verificationBaseUrl;
         this.fromEmail = fromEmail;
+        this.smtpHost = smtpHost;
+        this.smtpUsername = fromEmail;
+        this.smtpPassword = smtpPassword;
+
+        MeterRegistry registry = meterRegistry != null ? meterRegistry : new SimpleMeterRegistry();
+        this.emailFailureCounter = Counter.builder("email.delivery.failure")
+                .description("Contador de fallos en la entrega de correos de verificación")
+                .register(registry);
+        this.emailSuccessCounter = Counter.builder("email.delivery.success")
+                .description("Contador de entregas exitosas de correos de verificación")
+                .register(registry);
+    }
+
+    /**
+     * Constructor secundario para compatibilidad y pruebas unitarias aisladas.
+     *
+     * @param mailSender componente de envío de correos.
+     * @param verificationBaseUrl URL base de verificación.
+     * @param fromEmail dirección de correo de origen.
+     */
+    public EmailService(
+            JavaMailSender mailSender,
+            String verificationBaseUrl,
+            String fromEmail
+    ) {
+        this(mailSender, new SimpleMeterRegistry(), verificationBaseUrl, fromEmail, "smtp.gmail.com", "");
     }
 
     /**
@@ -50,6 +93,12 @@ public class EmailService {
      */
     @Async
     public void sendVerificationEmail(String toEmail, String token) {
+        if (!hasValidSmtpProperties()) {
+            emailFailureCounter.increment();
+            log.error("Propiedades SMTP requeridas (host, username, password) incompletas o vacías para envío de verificación a '{}'", toEmail);
+            return;
+        }
+
         String verificationLink = verificationBaseUrl + "?token=" + token;
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -63,9 +112,41 @@ public class EmailService {
                     + "Atentamente,\nEquipo de LogiTrack");
 
             mailSender.send(message);
+            emailSuccessCounter.increment();
             log.info("Correo de verificación enviado exitosamente a '{}'", toEmail);
         } catch (Exception ex) {
-            log.warn("No se pudo enviar el correo de verificación a '{}': {}", toEmail, ex.getMessage());
+            emailFailureCounter.increment();
+            log.error("Fallo al enviar el correo de verificación a '{}': {}", toEmail, ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Valida explícitamente si las propiedades SMTP requeridas están configuradas y no están en blanco.
+     *
+     * @return true si host, username y password están presentes y no vacíos; false en caso contrario.
+     */
+    public boolean hasValidSmtpProperties() {
+        return smtpHost != null && !smtpHost.isBlank()
+                && smtpUsername != null && !smtpUsername.isBlank()
+                && smtpPassword != null && !smtpPassword.isBlank();
+    }
+
+    /**
+     * Valida explícitamente la configuración SMTP, rechazando valores vacíos o en blanco.
+     *
+     * @throws IllegalStateException si alguna de las credenciales o propiedades requeridas está vacía o en blanco.
+     */
+    public void validateSmtpConfiguration() {
+        if (!hasValidSmtpProperties()) {
+            throw new IllegalStateException("Configuración SMTP inválida: host, username y password son requeridos y no pueden estar vacíos ni en blanco");
+        }
+    }
+
+    public double getFailureCount() {
+        return emailFailureCounter.count();
+    }
+
+    public double getSuccessCount() {
+        return emailSuccessCounter.count();
     }
 }

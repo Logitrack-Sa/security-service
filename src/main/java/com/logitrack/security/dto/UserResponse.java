@@ -49,11 +49,4 @@ public record UserResponse(
     public UserResponse(UUID id, String email, Set<Role> roles, boolean enabled) {
         this(id, email, null, null, roles, enabled, false, null, null);
     }
-
-    /**
-     * Constructor de compatibilidad sin el campo emailVerified.
-     */
-    public UserResponse(UUID id, String email, String username, String name, Set<Role> roles, boolean enabled, UUID customerId, UUID courierId) {
-        this(id, email, username, name, roles, enabled, false, customerId, courierId);
-    }
 }
