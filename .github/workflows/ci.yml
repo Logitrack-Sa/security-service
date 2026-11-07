@@ -18,7 +18,17 @@ jobs:
     name: Maven verify y pruebas aisladas
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TEST_REDIS_PORT: '6379'
     services:
+      redis:
+        image: redis:7-alpine@sha256:c5d34a98396a4775e223c74e929162c35c5a2182901ba26b50ade939941ce14b
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
       mysql:
         image: mysql:8.4
         env:

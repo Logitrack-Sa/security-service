@@ -2,9 +2,14 @@ package com.logitrack.security.repository;
 
 import com.logitrack.security.entity.User;
 import com.logitrack.security.entity.VerificationToken;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -12,6 +17,12 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface VerificationTokenRepository extends JpaRepository<VerificationToken, Long> {
+
+    @Query("select t.user.id from VerificationToken t where t.token = :token")
+    Optional<UUID> findUserIdByToken(@Param("token") String token);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<VerificationToken> findLockedByToken(String token);
 
     Optional<VerificationToken> findByToken(String token);
 

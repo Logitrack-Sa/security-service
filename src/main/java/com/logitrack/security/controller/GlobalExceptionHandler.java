@@ -4,11 +4,15 @@ import com.logitrack.security.dto.ErrorResponse;
 import com.logitrack.security.exception.DuplicateResourceException;
 import com.logitrack.security.exception.PrivilegeEscalationException;
 import com.logitrack.security.exception.ResourceNotFoundException;
+import com.logitrack.security.exception.VerificationTokenException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.net.URI;
 import java.time.Instant;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.core.AuthenticationException;
@@ -104,6 +108,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> conflict(HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DATA_CONFLICT", "Los datos entran en conflicto con un registro existente", request);
+    }
+
+    @ExceptionHandler(VerificationTokenException.class)
+    public ResponseEntity<ProblemDetail> verification(
+            VerificationTokenException ex, HttpServletRequest request) {
+        var status = ex.isExpired() ? HttpStatus.BAD_REQUEST : HttpStatus.NOT_FOUND;
+        var problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+        problem.setProperty("code", ex.isExpired() ? "VERIFICATION_TOKEN_EXPIRED" : "INVALID_VERIFICATION_TOKEN");
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(problem);
     }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, HttpServletRequest request) {

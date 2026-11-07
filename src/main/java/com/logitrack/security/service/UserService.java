@@ -14,6 +14,7 @@ import com.logitrack.security.repository.VerificationTokenRepository;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -188,6 +189,7 @@ public class UserService {
      * @throws ResourceNotFoundException si el usuario no existe.
      * @throws PrivilegeEscalationException si el usuario intenta modificar sus propios roles.
      */
+    @CacheEvict(value = "user_profiles", key = "'user::username::' + #userId")
     @Transactional
     public UserResponse updateRoles(UUID userId, Set<Role> roles) {
         var user = users.findById(userId).orElseThrow(ResourceNotFoundException::new);
@@ -225,6 +227,7 @@ public class UserService {
      * @throws ResourceNotFoundException si el usuario no existe.
      * @throws DuplicateResourceException si el customerId ya pertenece a otro usuario.
      */
+    @CacheEvict(value = "user_profiles", key = "'user::username::' + #userId")
     @Transactional
     public UserResponse linkCustomer(UUID userId, UUID customerId) {
         var user = users.findById(userId).orElseThrow(ResourceNotFoundException::new);
@@ -254,6 +257,7 @@ public class UserService {
      * @throws ResourceNotFoundException si el usuario no existe.
      * @throws DuplicateResourceException si el courierId ya pertenece a otro usuario.
      */
+    @CacheEvict(value = "user_profiles", key = "'user::username::' + #userId")
     @Transactional
     public UserResponse linkCourier(UUID userId, UUID courierId) {
         var user = users.findById(userId).orElseThrow(ResourceNotFoundException::new);

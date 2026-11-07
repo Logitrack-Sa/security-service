@@ -42,7 +42,11 @@ claims = json.loads(base64.urlsafe_b64decode(token.split(".")[1]+"=="))
 assert claims["iss"] == "https://issuer.test" and claims["exp"]-claims["iat"] == 600
 client = call("/api/v1/auth/register", "POST", {"email":"fixture-client@example.test","username":"fixture-client","password":"Client-fixture-password"}, expected=201)
 assert client["roles"] == ["CLIENTE"] and "passwordHash" not in client
-client_token = call("/api/v1/auth/login", "POST", {"username":"fixture-client","password":"Client-fixture-password"})["accessToken"]
+assert client["enabled"] is False and client["emailVerified"] is False
+call("/api/v1/auth/login", "POST", {"username":"fixture-client","password":"Client-fixture-password"}, expected=401)
+# Una cuenta creada por ADMIN está habilitada para comprobar el rechazo de autorización.
+active_client = call("/api/v1/users", "POST", {"email":"active-client@example.test","username":"active-client","password":"Client-fixture-password","roles":["CLIENTE"]}, token=token, expected=201)
+client_token = call("/api/v1/auth/login", "POST", {"username":"active-client","password":"Client-fixture-password"})["accessToken"]
 call("/api/v1/users/"+client["id"], token=client_token, expected=403)
 assert call("/api/v1/auth/register", "POST", {"email":"blocked@example.test","password":"Client-fixture-password","roles":["ADMIN"]}, expected=400)["code"] == "PRIVILEGE_ESCALATION"
 print("OK: imagen sin privilegios, MySQL/Flyway, configuración remota, RSA montada, login, perfil y rechazos 401/403")
