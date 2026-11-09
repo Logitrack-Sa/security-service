@@ -24,10 +24,9 @@ class AutomaticCustomerLoginTest {
         var user = new User("ana@example.test", "ana", "Ana", "hash", Set.of(Role.CLIENTE), null, null);
         user.setEmailVerified(true); UUID id = UUID.randomUUID(), customerId = UUID.randomUUID();
         ReflectionTestUtils.setField(user, "id", id);
-        when(users.findByEmailIgnoreCaseOrUsernameIgnoreCase("ana", "ana")).thenReturn(Optional.of(user));
+        when(users.findLockedByIdentifier("ana")).thenReturn(Optional.of(user));
         when(passwords.matches("password", "hash")).thenReturn(true);
         when(profiles.required(user)).thenReturn(true);
-        when(users.findLockedById(id)).thenReturn(Optional.of(user));
         doAnswer(inv -> { user.linkCustomer(customerId); return null; }).when(profiles).ensureLinked(user);
         when(tokens.generateToken(user)).thenAnswer(inv -> { assertThat(user.getCustomerId()).isEqualTo(customerId); return "final-token"; });
         var auth = new AuthService(users, passwords, tokens, profiles);

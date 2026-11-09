@@ -63,7 +63,7 @@ public class AuthService {
             throw new BadCredentialsException("Credenciales inválidas");
         }
 
-        User user = userRepository.findByEmailIgnoreCaseOrUsernameIgnoreCase(identifier, identifier)
+        User user = userRepository.findLockedByIdentifier(identifier)
                 .orElse(null);
 
         if (user == null) {
@@ -82,8 +82,6 @@ public class AuthService {
         }
 
         if (customers.required(user)) {
-            user = userRepository.findLockedById(user.getId()).orElseThrow(() -> new BadCredentialsException("Credenciales inválidas"));
-            if (!user.isEnabled()) throw new BadCredentialsException("Credenciales inválidas");
             customers.ensureLinked(user);
         }
         String accessToken = jwtTokenService.generateToken(user);
