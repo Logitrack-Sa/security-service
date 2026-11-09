@@ -98,19 +98,19 @@ locales. Para comprobar solamente la compilaci√≥n de fuentes y pruebas:
 `JAVA_TOOL_OPTIONS="-Xmx256m -XX:ActiveProcessorCount=1" ./mvnw -DskipTests test-compile`.
 La integraci√≥n con Redis/MySQL queda a cargo de GitHub Actions.
 
-### Alta autom·tica de clientes
+### Alta autom√°tica de clientes
 
-DespuÈs de verificar el correo, el primer login de una cuenta CLIENTE sin vÌnculo
+Despu√©s de verificar el correo, el primer login de una cuenta CLIENTE sin v√≠nculo
 aprovisiona su perfil en shipment-service. Security firma una identidad de 60 segundos,
-con audiencia shipment-service y propÛsito customer-provision; no acepta customerId del
-registro p˙blico. Shipment usa el UUID de usuario como propietario ˙nico y devuelve el
+con audiencia shipment-service y prop√≥sito customer-provision; no acepta customerId del
+registro p√∫blico. Shipment usa el UUID de usuario como propietario √∫nico y devuelve el
 mismo cliente ante reintentos. Una coincidencia de email no permite apropiarse de otro
-perfil. El JWT de sesiÛn final incluye el customerId persistido.
+perfil. El JWT de sesi√≥n final incluye el customerId persistido.
 
-Si Shipment no est· disponible, el login devuelve 503 CUSTOMER_PROFILE_UNAVAILABLE;
+Si Shipment no est√° disponible, el login devuelve 503 CUSTOMER_PROFILE_UNAVAILABLE;
 al reintentar se recupera el perfil ya creado, sin duplicarlo. Las cuentas ADMIN y
-REPARTIDOR conservan sus flujos. No se registra autom·ticamente un repartidor.
-Security descubre shipment-service mediante Eureka. Su URL lÛgica se configura con
+REPARTIDOR conservan sus flujos. No se registra autom√°ticamente un repartidor.
+Security descubre shipment-service mediante Eureka. Su URL l√≥gica se configura con
 logitrack.customer-provisioning.url (predeterminado http://shipment-service).
-El endpoint POST /api/v1/customers/provision requiere identidad firmada de propÛsito
-especÌfico; no se expone al p˙blico a travÈs del Gateway.
+El endpoint POST /api/v1/customers/provision requiere identidad firmada de prop√≥sito
+espec√≠fico; no se expone al p√∫blico a trav√©s del Gateway.

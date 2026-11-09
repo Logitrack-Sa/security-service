@@ -82,8 +82,8 @@ public class AuthService {
         }
 
         if (customers.required(user)) {
-            user = userRepository.findLockedById(user.getId()).orElseThrow(() -> new BadCredentialsException("Credenciales inv·lidas"));
-            if (!user.isEnabled()) throw new BadCredentialsException("Credenciales inv·lidas");
+            user = userRepository.findLockedById(user.getId()).orElseThrow(() -> new BadCredentialsException("Credenciales inv√°lidas"));
+            if (!user.isEnabled()) throw new BadCredentialsException("Credenciales inv√°lidas");
             customers.ensureLinked(user);
         }
         String accessToken = jwtTokenService.generateToken(user);
