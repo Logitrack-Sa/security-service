@@ -11,6 +11,8 @@ import com.logitrack.security.exception.PrivilegeEscalationException;
 import com.logitrack.security.exception.ResourceNotFoundException;
 import com.logitrack.security.repository.UserRepository;
 import com.logitrack.security.repository.VerificationTokenRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -147,6 +149,11 @@ public class UserService {
         User saved = users.save(user);
 
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> findAll(Pageable pageable) {
+        return users.findAll(pageable).map(this::toResponse);
     }
 
     /**

@@ -72,6 +72,7 @@ class SecurityFoundationTest {
                 .andExpect(jsonPath("$.status").value("UP")).andExpect(jsonPath("$.components").doesNotExist());
     }
     @Test void businessEndpointsAreNotPublic() throws Exception {
+        http.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
         http.perform(get("/api/v1/users")).andExpect(status().isUnauthorized());
         http.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
     }

@@ -1,5 +1,8 @@
 package com.logitrack.security.config;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authorization.AuthorizationDecision;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logitrack.security.dto.ErrorResponse;
 import com.logitrack.security.jwt.RsaKeyProvider;
@@ -185,6 +188,7 @@ public class SecurityConfiguration {
     @ConditionalOnWebApplication
     public SecurityFilterChain security(
             HttpSecurity http,
+            @Value("${logitrack.metrics.anonymous-enabled:false}") boolean anonymousMetrics,
             JwtDecoder jwtDecoder,
             JwtAuthenticationConverter jwtAuthenticationConverter,
             AuthenticationEntryPoint authenticationEntryPoint,
@@ -194,6 +198,8 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
+                        .requestMatchers(HttpMethod.GET, "/actuator/prometheus")
+                        .access((authentication, context) -> new AuthorizationDecision(anonymousMetrics))
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/verify-email", "/api/v1/auth/resend-verification").permitAll()

@@ -16,6 +16,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import com.logitrack.security.dto.UserPageResponse;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,6 +53,16 @@ public class UserController {
      */
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Listar cuentas", description = "Listado paginado exclusivo para ADMIN, sin contraseñas ni hashes.")
+    public ResponseEntity<UserPageResponse> list(@RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "20") int size) {
+        if (page < 0 || size < 1 || size > 100) return ResponseEntity.badRequest().build();
+        var result = userService.findAll(PageRequest.of(page, size, Sort.by("id")));
+        return ResponseEntity.ok(new UserPageResponse(result.getContent(), result.getNumber(),
+                result.getSize(), result.getTotalElements(), result.getTotalPages()));
     }
 
     /**
