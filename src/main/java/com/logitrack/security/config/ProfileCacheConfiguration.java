@@ -22,6 +22,6 @@ public class ProfileCacheConfiguration {
                 .entryTtl(Duration.ofMinutes(15))
                 .disableCachingNullValues()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
-        return builder -> builder.withCacheConfiguration("user_profiles", config).transactionAware();
+        return builder -> builder.withCacheConfiguration("user_profiles", config).transactionAware().enableStatistics();
     }
 }

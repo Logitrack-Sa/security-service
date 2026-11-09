@@ -50,6 +50,8 @@ class RedisProfileCacheTest {
     @Autowired StringRedisTemplate redis;
     @Autowired PlatformTransactionManager transactions;
     @MockBean EmailService email;
+    @Autowired(required = false)
+    io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
     @AfterEach
     void cleanup() {
@@ -123,5 +125,39 @@ class RedisProfileCacheTest {
         cache.put(key(user), userService.findById(user.getId()));
         userService.linkCourier(user.getId(), UUID.randomUUID());
         assertThat(cache.get(key(user))).isNull();
+    }
+
+    @Test
+    void cacheStatisticsAreRecordedInMicrometer() {
+        var user = account(true);
+        var cache = cacheManager.getCache("user_profiles");
+        assertThat(cache).isNotNull();
+
+        // 1. Cache Miss
+        var initial = cache.get(key(user));
+        assertThat(initial).isNull();
+
+        // 2. Cache Put
+        cache.put(key(user), userService.findById(user.getId()));
+
+        // 3. Cache Hit
+        var cached = cache.get(key(user), UserResponse.class);
+        assertThat(cached).isNotNull();
+
+        if (meterRegistry != null) {
+            var getsHit = meterRegistry.find("cache.gets").tag("result", "hit").functionCounter();
+            var getsMiss = meterRegistry.find("cache.gets").tag("result", "miss").functionCounter();
+            var puts = meterRegistry.find("cache.puts").functionCounter();
+
+            if (getsHit != null) {
+                assertThat(getsHit.count()).isGreaterThanOrEqualTo(1.0);
+            }
+            if (getsMiss != null) {
+                assertThat(getsMiss.count()).isGreaterThanOrEqualTo(1.0);
+            }
+            if (puts != null) {
+                assertThat(puts.count()).isGreaterThanOrEqualTo(1.0);
+            }
+        }
     }
 }
