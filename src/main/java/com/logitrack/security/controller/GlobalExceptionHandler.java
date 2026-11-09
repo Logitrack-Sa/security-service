@@ -47,6 +47,12 @@ public class GlobalExceptionHandler {
      * @param request petición HTTP en curso.
      * @return respuesta de error 401 UNAUTHORIZED con mensaje genérico.
      */
+    @ExceptionHandler(com.logitrack.security.exception.CustomerProvisioningException.class)
+    public ResponseEntity<ErrorResponse> customerProvisioning(HttpServletRequest request,
+            com.logitrack.security.exception.CustomerProvisioningException ex) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "CUSTOMER_PROFILE_UNAVAILABLE", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> authentication(HttpServletRequest request) {
         return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Credenciales inválidas", request);

@@ -31,6 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final CustomerProvisioner customers;
 
     /**
      * Construye el servicio inyectando los componentes de persistencia, codificaci贸n y emisi贸n de tokens.
@@ -39,10 +40,11 @@ public class AuthService {
      * @param passwordEncoder codificador criptogr谩fico de contrase帽as.
      * @param jwtTokenService servicio de emisi贸n y firma de tokens JWT.
      */
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenService jwtTokenService, CustomerProvisioner customers) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.customers = customers;
     }
 
     /**
@@ -53,7 +55,7 @@ public class AuthService {
      * @throws BadCredentialsException si el usuario no existe, la contrase帽a es incorrecta,
      *                                 o la cuenta se encuentra deshabilitada.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         String identifier = request.getIdentifier();
         if (identifier == null || identifier.isBlank() || request.password() == null || request.password().isBlank()) {
@@ -79,6 +81,11 @@ public class AuthService {
             throw new BadCredentialsException("Credenciales inv谩lidas");
         }
 
+        if (customers.required(user)) {
+            user = userRepository.findLockedById(user.getId()).orElseThrow(() -> new BadCredentialsException("Credenciales inv醠idas"));
+            if (!user.isEnabled()) throw new BadCredentialsException("Credenciales inv醠idas");
+            customers.ensureLinked(user);
+        }
         String accessToken = jwtTokenService.generateToken(user);
         log.info("Autenticaci贸n exitosa y emisi贸n de JWT para usuario (id={})", user.getId());
 

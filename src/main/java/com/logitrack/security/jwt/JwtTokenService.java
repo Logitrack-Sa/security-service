@@ -59,6 +59,17 @@ public class JwtTokenService {
      * @return cadena compacta serializada del JWT firmado.
      */
     public String generateToken(User user) {
+        return generateToken(user, false);
+    }
+
+    public String generateCustomerProvisioningToken(User user) {
+        if (!user.isEnabled() || !user.isEmailVerified() || !user.getRoles().contains(com.logitrack.security.entity.Role.CLIENTE)) {
+            throw new IllegalArgumentException("Se requiere un cliente verificado.");
+        }
+        return generateToken(user, true);
+    }
+
+    private String generateToken(User user, boolean provisioning) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(properties.ttlSeconds());
 
@@ -82,6 +93,13 @@ public class JwtTokenService {
             claimsBuilder.claim("courierId", user.getCourierId().toString());
         }
 
+        if (provisioning) {
+            claimsBuilder.audience(List.of("shipment-service"))
+                    .expirationTime(Date.from(now.plusSeconds(60)))
+                    .claim("purpose", "customer-provision")
+                    .claim("name", user.getName() == null ? "Cliente" : user.getName())
+                    .claim("email", user.getEmail());
+        }
         JWTClaimsSet claimsSet = claimsBuilder.build();
 
         JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)

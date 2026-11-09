@@ -97,3 +97,20 @@ En equipos con memoria o CPU limitadas, evitar suites completas y contenedores
 locales. Para comprobar solamente la compilaciÃ³n de fuentes y pruebas:
 `JAVA_TOOL_OPTIONS="-Xmx256m -XX:ActiveProcessorCount=1" ./mvnw -DskipTests test-compile`.
 La integraciÃ³n con Redis/MySQL queda a cargo de GitHub Actions.
+
+### Alta automática de clientes
+
+Después de verificar el correo, el primer login de una cuenta CLIENTE sin vínculo
+aprovisiona su perfil en shipment-service. Security firma una identidad de 60 segundos,
+con audiencia shipment-service y propósito customer-provision; no acepta customerId del
+registro público. Shipment usa el UUID de usuario como propietario único y devuelve el
+mismo cliente ante reintentos. Una coincidencia de email no permite apropiarse de otro
+perfil. El JWT de sesión final incluye el customerId persistido.
+
+Si Shipment no está disponible, el login devuelve 503 CUSTOMER_PROFILE_UNAVAILABLE;
+al reintentar se recupera el perfil ya creado, sin duplicarlo. Las cuentas ADMIN y
+REPARTIDOR conservan sus flujos. No se registra automáticamente un repartidor.
+Security descubre shipment-service mediante Eureka. Su URL lógica se configura con
+logitrack.customer-provisioning.url (predeterminado http://shipment-service).
+El endpoint POST /api/v1/customers/provision requiere identidad firmada de propósito
+específico; no se expone al público a través del Gateway.

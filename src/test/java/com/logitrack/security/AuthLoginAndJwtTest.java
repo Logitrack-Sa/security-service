@@ -90,6 +90,27 @@ class AuthLoginAndJwtTest {
     @Autowired
     private JwtTokenService jwtTokenService;
 
+    @Test
+    void provisioningTokenIsShortLivedScopedAndNeverReplacesTheSession() throws Exception {
+        var user = new User("verified@example.test", "verified", "Ana", passwordEncoder.encode("Password123!"), Set.of(Role.CLIENTE), null, null);
+        user.setEmailVerified(true);
+        userRepository.saveAndFlush(user);
+        var provisioningToken = jwtTokenService.generateCustomerProvisioningToken(user);
+        var signed = SignedJWT.parse(provisioningToken);
+        assertThat(signed.verify(new RSASSAVerifier(rsaKeyProvider.getPublicKey()))).isTrue();
+        assertThatThrownBy(() -> jwtTokenService.parseAndValidate(provisioningToken)).isInstanceOf(IllegalArgumentException.class);
+        var claims = signed.getJWTClaimsSet();
+        assertThat(claims.getAudience()).containsExactly("shipment-service");
+        assertThat(claims.getStringClaim("purpose")).isEqualTo("customer-provision");
+        assertThat(claims.getStringClaim("email")).isEqualTo(user.getEmail());
+        assertThat(claims.getExpirationTime().toInstant()).isEqualTo(claims.getIssueTime().toInstant().plusSeconds(60));
+        var session = jwtTokenService.parseAndValidate(jwtTokenService.generateToken(user)).getJWTClaimsSet();
+        assertThat(session.getClaim("purpose")).isNull();
+        assertThat(session.getClaim("email")).isNull();
+        user.setEmailVerified(false);
+        assertThatThrownBy(() -> jwtTokenService.generateCustomerProvisioningToken(user)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     @Nested
     @DisplayName("Criterio 1: Autenticación exitosa y estructura de Claims del JWT")
     class SuccessfulLoginAndClaimsTests {
