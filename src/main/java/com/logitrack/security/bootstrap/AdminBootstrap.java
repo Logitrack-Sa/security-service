@@ -84,9 +84,9 @@ public class AdminBootstrap implements SmartInitializingSingleton, ApplicationRu
     /**
      * Lógica central de aprovisionamiento idempotente del administrador inicial.
      *
-     * <p>Si el usuario ya existe (por email o username), actualiza su contraseña hash,
-     * fuerza {@code enabled = true} y {@code emailVerified = true} para garantizar que
-     * siempre pueda autenticarse con las credenciales de la variable de entorno vigente.</p>
+     * <p>Si el usuario ya existe (por email o username), conserva su contraseña actual,
+     * y mantiene {@code enabled = true} y {@code emailVerified = true}.
+     * La credencial del entorno se utiliza únicamente para la creación inicial.</p>
      */
     @Transactional
     public void provision() {
@@ -116,13 +116,12 @@ public class AdminBootstrap implements SmartInitializingSingleton, ApplicationRu
             userRepository.save(admin);
             log.info("ADMIN inicial provisionado exitosamente para identificador '{}'.", username);
         } else {
-            // Upsert: garantizar que enabled y emailVerified estén activos y actualizar el hash
+            // No deshacer una recuperación de contraseña al reiniciar el servicio.
             User admin = existing.get();
             admin.setEnabled(true);
             admin.setEmailVerified(true);
-            admin.updatePasswordHash(passwordEncoder.encode(properties.password()));
             userRepository.save(admin);
-            log.info("ADMIN inicial ya se encuentra presente en la base de datos; credenciales actualizadas.");
+            log.info("ADMIN inicial ya se encuentra presente; contraseña conservada.");
         }
     }
 }

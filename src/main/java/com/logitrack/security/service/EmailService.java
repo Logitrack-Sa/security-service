@@ -35,6 +35,9 @@ public class EmailService {
     private final Counter emailFailureCounter;
     private final Counter emailSuccessCounter;
 
+    @Value("${logitrack.frontend.password-reset-url:http://localhost:3000/reset-password}")
+    private String passwordResetUrl;
+
     /**
      * Construye el servicio inyectando el emisor de correo, el registro de métricas y las propiedades de configuración.
      *
@@ -129,6 +132,30 @@ public class EmailService {
         return smtpHost != null && !smtpHost.isBlank()
                 && smtpUsername != null && !smtpUsername.isBlank()
                 && smtpPassword != null && !smtpPassword.isBlank();
+    }
+
+    @Async
+    public void sendPasswordResetEmail(String recipient, String token) {
+        if (!hasValidSmtpProperties()) {
+            emailFailureCounter.increment();
+            log.error("Configuración SMTP incompleta para recuperación de contraseña");
+            return;
+        }
+        try {
+            var message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(recipient);
+            message.setSubject("Restablecé tu contraseña de LogiTrack");
+            message.setText("Recibimos una solicitud para restablecer tu contraseña.\n\n"
+                    + passwordResetUrl + "#token=" + token + "\n\n"
+                    + "El enlace vence en 15 minutos y se puede usar una sola vez.\n"
+                    + "Si no lo solicitaste, ignorá este correo. Tu contraseña no cambió.\n\nEquipo de LogiTrack");
+            mailSender.send(message);
+            emailSuccessCounter.increment();
+        } catch (Exception failure) {
+            emailFailureCounter.increment();
+            log.error("No se pudo entregar el correo de recuperación ({})", failure.getClass().getSimpleName());
+        }
     }
 
     /**
