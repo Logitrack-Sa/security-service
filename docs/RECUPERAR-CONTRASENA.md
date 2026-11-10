@@ -21,6 +21,8 @@ Los correos `example.test` de las cuentas de prueba no reciben correo externo.
 - `FRONTEND_URL` define el origen público confiable, incluido `/logitrack` cuando
   corresponde. No se utiliza el Host enviado por el solicitante. SMTP reutiliza
   la configuración existente. En producción debe ser una URL HTTPS.
+  Los fallos de entrega SMTP se reintentan una vez tras un segundo, sin bloquear
+  la respuesta HTTP ni generar un token diferente. Un fallo definitivo queda en métricas.
 - El token viaja en el fragmento, que no se envía en solicitudes HTTP ni Referer.
   La página declara `no-referrer` y no se indexa. Las respuestas usan `no-store`.
 - El arranque del ADMIN conserva la contraseña persistida; cambiar la variable

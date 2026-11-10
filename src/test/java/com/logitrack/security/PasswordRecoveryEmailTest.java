@@ -34,4 +34,19 @@ class PasswordRecoveryEmailTest {
         service.sendPasswordResetEmail("recipient@example.test","a".repeat(43));
         assertThat(service.getFailureCount()).isEqualTo(1);
     }
+
+    @Test void retriesOnceAfterTransientFailureUsingTheSameLink() {
+        var sender = mock(JavaMailSender.class);
+        doThrow(new org.springframework.mail.MailSendException("temporary-test-failure"))
+                .doNothing().when(sender).send(any(SimpleMailMessage.class));
+        var service = new EmailService(sender,new SimpleMeterRegistry(),"https://example.test/verify-email",
+                "sender@example.test","smtp.example.test","test-only");
+        ReflectionTestUtils.setField(service,"passwordResetUrl","https://example.test/reset-password");
+        service.sendPasswordResetEmail("recipient@example.test","a".repeat(43));
+        var messages = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(sender,times(2)).send(messages.capture());
+        assertThat(messages.getAllValues().get(0).getText()).isEqualTo(messages.getAllValues().get(1).getText());
+        assertThat(service.getSuccessCount()).isEqualTo(1);
+        assertThat(service.getFailureCount()).isZero();
+    }
 }

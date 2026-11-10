@@ -141,20 +141,32 @@ public class EmailService {
             log.error("Configuración SMTP incompleta para recuperación de contraseña");
             return;
         }
-        try {
-            var message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(recipient);
-            message.setSubject("Restablecé tu contraseña de LogiTrack");
-            message.setText("Recibimos una solicitud para restablecer tu contraseña.\n\n"
+        var message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(recipient);
+        message.setSubject("Restablecé tu contraseña de LogiTrack");
+        message.setText("Recibimos una solicitud para restablecer tu contraseña.\n\n"
                     + passwordResetUrl + "#token=" + token + "\n\n"
                     + "El enlace vence en 15 minutos y se puede usar una sola vez.\n"
                     + "Si no lo solicitaste, ignorá este correo. Tu contraseña no cambió.\n\nEquipo de LogiTrack");
-            mailSender.send(message);
-            emailSuccessCounter.increment();
-        } catch (Exception failure) {
-            emailFailureCounter.increment();
-            log.error("No se pudo entregar el correo de recuperación ({})", failure.getClass().getSimpleName());
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                mailSender.send(message);
+                emailSuccessCounter.increment();
+                return;
+            } catch (Exception failure) {
+                if (attempt == 0 && failure instanceof org.springframework.mail.MailSendException) {
+                    try {
+                        Thread.sleep(1000);
+                        continue;
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                emailFailureCounter.increment();
+                log.error("No se pudo entregar el correo de recuperación ({})", failure.getClass().getSimpleName());
+                return;
+            }
         }
     }
 
