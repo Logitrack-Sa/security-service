@@ -1,11 +1,11 @@
 name: Publicar imagen versionada en Docker Hub
 on:
   push:
-    tags: ['sprint2-*']
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: Versión sprint2-AAAAMMDD.N
+        description: Versión semántica de entrega, por ejemplo v1.0.0
         required: true
         type: string
 permissions:
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$VERSION" =~ ^sprint2-[0-9]{8}\.[0-9]+$ ]]
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$DOCKERHUB_NAMESPACE" =~ ^[a-z0-9][a-z0-9_-]{2,}$ ]]
           test -n "$DOCKERHUB_USERNAME"
           test -n "$DOCKERHUB_TOKEN" || { echo 'Configurar el secreto limitado DOCKERHUB_TOKEN'; exit 1; }
