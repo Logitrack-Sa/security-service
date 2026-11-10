@@ -1,7 +1,7 @@
 package com.logitrack.security.entity;
 
 /**
- * Roles autorizados en el sistema de seguridad de LogiTrack según el contrato del Sprint 2.
+ * Roles autorizados en el sistema de seguridad de LogiTrack según el contrato de LogiTrack.
  *
  * <ul>
  *   <li>{@link #ADMIN}: Administrador con privilegios totales de gestión de usuarios, roles y vinculaciones.</li>

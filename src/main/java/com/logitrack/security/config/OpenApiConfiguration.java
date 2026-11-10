@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * del microservicio {@code security-service}.
  *
  * <p>Define los metadatos globales del servicio, esquema de seguridad mediante tokens Bearer JWT (RS256)
- * y especificaciones conformes a los contratos del Sprint 2 sin exponer credenciales ni claves privadas.</p>
+ * y especificaciones conformes a los contratos de LogiTrack sin exponer credenciales ni claves privadas.</p>
  */
 @Configuration
 public class OpenApiConfiguration {
@@ -46,10 +46,9 @@ public class OpenApiConfiguration {
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("Equipo de Arquitectura LogiTrack - Seguridad")
-                                .email("seguridad@logitrack.com")
                                 .url("https://github.com/Logitrack-Sa/security-service"))
                         .license(new License()
-                                .name("Uso Interno LogiTrack - Sprint 2")
+                                .name("Uso interno de LogiTrack")
                                 .url("https://github.com/Logitrack-Sa")))
                 .components(new Components()
                         .addSecuritySchemes(BEARER_AUTH, new SecurityScheme()

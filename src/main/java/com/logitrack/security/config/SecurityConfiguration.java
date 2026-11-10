@@ -89,7 +89,7 @@ public class SecurityConfiguration {
     }
 
     /**
-     * Decodificador de tokens JWT basado en la clave pública RSA y las reglas de contrato del Sprint 2.
+     * Decodificador de tokens JWT basado en la clave pública RSA y las reglas de contrato de LogiTrack.
      *
      * @param rsaKeyProvider proveedor de claves criptográficas RSA del emisor.
      * @param jwtProperties propiedades de configuración JWT (emisor, audiencias, TTL).

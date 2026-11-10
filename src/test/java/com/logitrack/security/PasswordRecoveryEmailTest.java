@@ -11,6 +11,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 class PasswordRecoveryEmailTest {
+    @Test void localMailCaptureDoesNotNeedAnInventedPassword() {
+        var sender = mock(JavaMailSender.class);
+        var service = new EmailService(sender,new SimpleMeterRegistry(),"http://localhost/verify-email",
+                "local@example.test","mailpit","");
+        ReflectionTestUtils.setField(service,"smtpAuthenticationRequired",false);
+        ReflectionTestUtils.setField(service,"passwordResetUrl","http://localhost/reset-password");
+        service.sendPasswordResetEmail("recipient@example.test","a".repeat(43));
+        verify(sender).send(any(SimpleMailMessage.class));
+        assertThat(service.getSuccessCount()).isEqualTo(1);
+    }
     @Test void usesConfiguredUrlAndFragmentWithoutSendingThePassword() {
         var sender = mock(JavaMailSender.class);
         var service = new EmailService(sender,new SimpleMeterRegistry(),"https://example.test/verify-email",

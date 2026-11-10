@@ -37,7 +37,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 /**
  * Controlador REST para operaciones públicas de autenticación, emisión de tokens y distribución de claves.
  *
- * <p>Expone los siguientes puntos de entrada del contrato del Sprint 2:</p>
+ * <p>Expone los siguientes puntos de entrada del contrato de LogiTrack:</p>
  * <ul>
  *   <li>{@code POST /api/v1/auth/register}: Registro público restringido al rol {@code CLIENTE}.</li>
  *   <li>{@code POST /api/v1/auth/login}: Autenticación de credenciales y emisión de JWT RS256.</li>

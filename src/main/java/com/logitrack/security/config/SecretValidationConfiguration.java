@@ -11,7 +11,7 @@ import org.springframework.core.env.Environment;
 /**
  * Validador estricto de presencia de secretos obligatorios en tiempo de arranque.
  *
- * <p>Asegura el cumplimiento del contrato de seguridad del Sprint 2:</p>
+ * <p>Asegura el cumplimiento del contrato de seguridad de LogiTrack:</p>
  * <ul>
  *   <li>Las credenciales de base de datos ({@code DB_PASSWORD}) nunca deben provenir de Git config
  *       y son de suministro obligatorio por variables de entorno en producción.</li>

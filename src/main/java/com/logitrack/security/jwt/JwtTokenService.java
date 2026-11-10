@@ -17,7 +17,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * Servicio encargado de la emisión, firma digital y verificación de tokens JWT según el contrato del Sprint 2.
+ * Servicio encargado de la emisión, firma digital y verificación de tokens JWT según el contrato de LogiTrack.
  *
  * <p>Genera tokens conformes al estándar con el algoritmo {@code RS256}, incluyendo cabecera {@code kid}
  * y claims estándar y de dominio:</p>

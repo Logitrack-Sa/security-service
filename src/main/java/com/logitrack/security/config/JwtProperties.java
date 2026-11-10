@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Propiedades de configuración para la emisión y gestión del ciclo de vida de los JWT.
  *
  * <p>Define los parámetros criptográficos y de reclamos (claims) requeridos por el contrato
- * del Sprint 2 para la autenticación descentralizada entre microservicios:</p>
+ * de LogiTrack para la autenticación descentralizada entre microservicios:</p>
  * <ul>
  *   <li>{@code privateKeyLocation}: Ubicación de la clave privada RSA (formato PEM) montada desde secretos.</li>
  *   <li>{@code publicKeyLocation}: Ubicación opcional de la clave pública RSA (formato PEM).</li>

@@ -3,7 +3,7 @@ package com.logitrack.security.dto;
 /**
  * Respuesta exitosa de autenticación con el token de acceso emitido.
  *
- * <p>Sigue el contrato del Sprint 2 para la autenticación en el ecosistema LogiTrack:</p>
+ * <p>Sigue el contrato de LogiTrack para la autenticación en el ecosistema LogiTrack:</p>
  * <ul>
  *   <li>{@code accessToken}: Cadena serializada del JWT firmado con RS256.</li>
  *   <li>{@code tokenType}: Esquema de autorización estándar ({@code Bearer}).</li>

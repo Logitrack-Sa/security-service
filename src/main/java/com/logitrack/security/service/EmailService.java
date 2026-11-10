@@ -38,6 +38,9 @@ public class EmailService {
     @Value("${logitrack.frontend.password-reset-url:http://localhost:3000/reset-password}")
     private String passwordResetUrl;
 
+    @Value("${spring.mail.properties.mail.smtp.auth:true}")
+    private boolean smtpAuthenticationRequired = true;
+
     /**
      * Construye el servicio inyectando el emisor de correo, el registro de métricas y las propiedades de configuración.
      *
@@ -131,7 +134,7 @@ public class EmailService {
     public boolean hasValidSmtpProperties() {
         return smtpHost != null && !smtpHost.isBlank()
                 && smtpUsername != null && !smtpUsername.isBlank()
-                && smtpPassword != null && !smtpPassword.isBlank();
+                && (!smtpAuthenticationRequired || (smtpPassword != null && !smtpPassword.isBlank()));
     }
 
     @Async
